@@ -434,7 +434,7 @@ namespace InterOp {
             catch (...) {
                 _Promise.SetExceptionUnsafe(std::current_exception());
             }
-			Temp::Deallocate(this);
+            Temp::Deallocate(this);
         }
 
         auto GetFuture() { return _Promise.GetFuture(); }

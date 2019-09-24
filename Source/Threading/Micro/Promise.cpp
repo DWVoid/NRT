@@ -9,7 +9,7 @@ namespace {
         case FutureErrorCode::PromiseAlreadySatisfied: return "FutureError:promise already satisfied";
         case FutureErrorCode::NoState: return "FutureError:no state";
         }
-		return "";
+        return "";
     }
 
     class AsyncExecutor : public IExecTask {
@@ -33,7 +33,7 @@ namespace {
         _CurrentExecutor = this;
         _Current = std::move(_Current).resume();
         if (!static_cast<bool>(_Current)) {
-			Temp::Deallocate(this);
+            Temp::Deallocate(this);
         }
     }
 }

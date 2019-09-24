@@ -6,12 +6,12 @@
 class SpinLock {
 public:
     void Enter() noexcept {
-		for (;;) {
-			auto expect = false;
-			if (__lock.compare_exchange_strong(expect, true, std::memory_order_acquire))
-				return;
-			WaitUntilLockIsFree();
-		}
+        for (;;) {
+            auto expect = false;
+            if (__lock.compare_exchange_strong(expect, true, std::memory_order_acquire))
+                return;
+            WaitUntilLockIsFree();
+        }
     }
 
     void Leave() noexcept { __lock.store(false, std::memory_order_release); }

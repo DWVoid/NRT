@@ -20,7 +20,7 @@ private:
     static constexpr int DefaultSleep1Threshold = 20; // After how many yields should we Sleep(1) frequently?
     static bool IsSingleProcessor;
 public:
-	static int OptimalMaxSpinWaitsPerSpinIteration;
+    static int OptimalMaxSpinWaitsPerSpinIteration;
     static int SpinCountForSpinBeforeWait;
 
     int Count() const noexcept { return _Count; }
@@ -53,7 +53,7 @@ private:
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
             else {
-	            const int yieldsSoFar = _Count>=YieldThreshold ? (_Count-YieldThreshold)/2 : _Count;
+                const int yieldsSoFar = _Count>=YieldThreshold ? (_Count-YieldThreshold)/2 : _Count;
                 if ((yieldsSoFar%Sleep0EveryHowManyYields)==(Sleep0EveryHowManyYields-1)) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(0));
                 }
