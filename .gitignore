@@ -1,3 +1,23 @@
-# Project exclude paths
-/cmake-build-debug/
-/out
+# Project Build Directory
+/cmake-build-*
+/out/
+[Bb]in
+*/[Bn]in
+
+# Common Binaries
+*.exe
+*.dll
+*.lib
+*.out
+*.so
+*.a
+*.dylib
+*.bin
+
+# Common Intermediate Files
+*.o
+*.obj
+
+# IDE Working directory
+/.vs/
+/.idea/
