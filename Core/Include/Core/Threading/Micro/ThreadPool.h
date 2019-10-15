@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <vector>
+#include "Core/Config.h"
 
 class IExecTask {
 public:
@@ -9,9 +9,9 @@ public:
     virtual ~IExecTask() noexcept = default;
 };
 
-class AInstancedExecTask : public IExecTask{
+class AInstancedExecTask : public IExecTask {
 public:
-    void Exec() noexcept override;
+	NRTCORE_API void Exec() noexcept override;
     virtual void Exec(uint32_t instance) noexcept = 0;
 };
 
@@ -29,9 +29,9 @@ public:
         Enqueue(task.release());
     }
 
-    static bool LocalEnqueue(IExecTask* task) noexcept;
-    static void Enqueue(IExecTask* task) noexcept;
-    static void Spawn(AInstancedExecTask* task) noexcept;
-    static void Stop() noexcept;
-    static void Panic() noexcept;
+	NRTCORE_API static bool LocalEnqueue(IExecTask* task) noexcept;
+	NRTCORE_API static void Enqueue(IExecTask* task) noexcept;
+	NRTCORE_API static void Spawn(AInstancedExecTask* task) noexcept;
+	NRTCORE_API static void Stop() noexcept;
+	NRTCORE_API static void Panic() noexcept;
 };

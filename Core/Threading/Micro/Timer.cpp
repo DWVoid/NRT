@@ -1,5 +1,5 @@
-#include "Utilities/InterOp.inc"
-#include "Timer.h"
+#include "../../Utilities/InterOp.h"
+#include "Core/Threading/Micro/Timer.h"
 #include <thread>
 #include <queue>
 #include <mutex>
@@ -18,7 +18,7 @@ namespace {
             }
         }
 
-        void Submit(DelayedTask* task, int milli) noexcept {
+        void Submit(DelayedTask* task, const unsigned long long milli) noexcept {
             std::lock_guard<std::mutex> lk(_QueueLock);
             _Queue.push({ task, std::chrono::steady_clock::now() + std::chrono::milliseconds(milli) });
             _QueueNotify.notify_all();

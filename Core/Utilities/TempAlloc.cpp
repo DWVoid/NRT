@@ -1,11 +1,11 @@
 #include <cstdlib>
-#include "TempAlloc.h"
-#include "Threading/SpinLock.h"
-#include "Threading/Micro/Timer.h"
-#include "Threading/Micro/ThreadPool.h"
+#include "Core/Utilities/TempAlloc.h"
+#include "Core/Threading/SpinLock.h"
+#include "Core/Threading/Micro/Timer.h"
+#include "Core/Threading/Micro/ThreadPool.h"
 
 #if __has_include(<Windows.h>)
-#include "Utilities/System/WindowsLess.h"
+#include "Core/Utilities/System/WindowsLess.h"
 #define SYSTEM_WINDOWS
 #else
 #define SYSTEM_POSIX
@@ -321,8 +321,8 @@ namespace {
                 [[nodiscard]] Local* Get() const noexcept { return Mem; }
                 Local* Mem;
             };
-            static thread_local UniqueLocal _Trd{};
-            return _Trd.Get();
+            static thread_local UniqueLocal trd{};
+            return trd.Get();
         }
     };
 }

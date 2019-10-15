@@ -1,10 +1,10 @@
-#include "SpinWait.h"
-#include "Utilities/Timings.h"
+#include "Core/Threading/SpinWait.h"
+#include "Core/Utilities/Timings.h"
 #include <cmath>
 
 bool SpinWait::IsSingleProcessor = std::thread::hardware_concurrency()==1;
-int SpinWait::SpinCountForSpinBeforeWait = IsSingleProcessor ? 1 : 35;
-int SpinWait::OptimalMaxSpinWaitsPerSpinIteration = 7;
+unsigned int SpinWait::SpinCountForSpinBeforeWait = IsSingleProcessor ? 1 : 35;
+unsigned int SpinWait::OptimalMaxSpinWaitsPerSpinIteration = 7;
 
 namespace {
     constexpr unsigned int MinNsPerNormalizedYield = 37; // measured typically 37-46 on post-Skylake

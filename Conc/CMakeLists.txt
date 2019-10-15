@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.14)
+
+find_package(Boost COMPONENTS context)
+
+if (Boost_FOUND)
+    file(GLOB_RECURSE SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
+    add_library(NRT.Conc SHARED ${SOURCE})
+    target_enable_ipo(NRT.Conc)
+    target_compile_definitions(NRT.Conc PRIVATE -DNRTCONC_BUILD)
+    target_include_directories(NRT.Conc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Include)
+    target_include_directories(NRT.Conc INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/Include)
+    target_link_libraries(NRT.Conc PUBLIC NRT.Core)
+	target_link_libraries(NRT.Conc PRIVATE Boost::context)
+else()
+    message("Boost not found, Skip building concurrent support")
+endif()

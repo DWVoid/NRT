@@ -1,8 +1,9 @@
-#include "ThreadPool.h"
-#include "Threading/SpinLock.h"
-#include "Threading/Semaphore.h"
-#include "Utilities/InterOp.inc"
-#include "Utilities/TempAlloc.h"
+#include "Core/Threading/Micro/ThreadPool.h"
+#include "Core/Threading/SpinLock.h"
+#include "Core/Threading/Semaphore.h"
+#include "../../Utilities/InterOp.h"
+#include "Core/Utilities/TempAlloc.h"
+#include <vector>
 
 namespace {
     class SyncQueue {
@@ -10,14 +11,14 @@ namespace {
         void Push(const uintptr_t data) noexcept {
             if (!_Beg) {
                 _Beg.Off = _End.Off = 0;
-                _Beg.Blk = _End.Blk = Temp::Allocate<Node>();
+                _Beg.Blk = _End.Blk = Temp::New<Node>();
                 _End.Blk->Data[_End.Off++] = data;
             }
             else {
                 _End.Blk->Data[_End.Off++] = data;
                 if (_End.Off == Items) {
                     _End.Off = 0;
-                    _End.Blk->Next = Temp::Allocate<Node>();
+                    _End.Blk->Next = Temp::New<Node>();
                     _End.Blk = _End.Blk->Next;
                 }
             }
@@ -31,14 +32,14 @@ namespace {
                         _Beg.Off = 0;
                         const auto rel = _Beg.Blk;
                         _Beg.Blk = _Beg.Blk->Next;
-                        Temp::Deallocate(rel);
+                        Temp::Delete(rel);
                     }
                 }
                 if (_Beg == _End) {
                     if (_Beg.Off == _End.Off) {
                         const auto rel = _Beg.Blk;
                         _Beg.Blk = _End.Blk = nullptr;
-                        Temp::Deallocate(rel);
+                        Temp::Delete(rel);
                     }
                 }
                 return ret;
@@ -170,7 +171,7 @@ namespace {
             }
         }
 
-        ~Implementation() { Utilities::InterOp::StopOnThreadPoolStop();  }
+        ~Implementation() noexcept { Utilities::InterOp::StopOnThreadPoolStop();  }
 
         void Stop() noexcept {
             if (_Stat.Running.exchange(false)) {
@@ -274,7 +275,7 @@ namespace {
                 }
                 else {
                     SpinWait spinner{};
-                    for (auto i = 0; i < SpinWait::SpinCountForSpinBeforeWait; ++i) {
+                    for (auto i = 0u; i < SpinWait::SpinCountForSpinBeforeWait; ++i) {
                         spinner.SpinOnce();
                         if (exec = _Queue->TryDequeue(); exec) {
                             return exec;

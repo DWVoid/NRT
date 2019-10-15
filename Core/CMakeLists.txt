@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.14)
+
+file(GLOB_RECURSE SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
+add_library(NRT.Core SHARED ${SOURCE})
+target_enable_ipo(NRT.Core)
+target_compile_definitions(NRT.Core PRIVATE -DNRTCORE_BUILD)
+target_include_directories(NRT.Core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Include)
+target_include_directories(NRT.Core INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/Include)

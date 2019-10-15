@@ -13,7 +13,7 @@ struct Vec3 {
         };
     };
 
-    constexpr Vec3() noexcept = default;
+    constexpr Vec3() noexcept: Data{} {}
 
     constexpr Vec3(T x, T y, T z) noexcept
             :X(x), Y(y), Z(z) { }

@@ -1,17 +1,7 @@
-#include "Promise.h"
+#include "Conc/Async.h"
 #include <boost/context/fiber.hpp>
 
 namespace {
-    const char* GetErrorString(FutureErrorCode code) noexcept {
-        switch (code) {
-        case FutureErrorCode::BrokenPromise: return "FutureError:broken promise";
-        case FutureErrorCode::FutureAlreadyRetrieved: return "FutureError:future already retrieved";
-        case FutureErrorCode::PromiseAlreadySatisfied: return "FutureError:promise already satisfied";
-        case FutureErrorCode::NoState: return "FutureError:no state";
-        }
-        return "";
-    }
-
     class AsyncExecutor : public IExecTask {
     public:
         explicit AsyncExecutor(IExecTask* inner)
@@ -33,12 +23,10 @@ namespace {
         _CurrentExecutor = this;
         _Current = std::move(_Current).resume();
         if (!static_cast<bool>(_Current)) {
-            Temp::Deallocate(this);
+            Temp::Delete(this);
         }
     }
 }
-
-FutureError::FutureError(FutureErrorCode ec):logic_error(GetErrorString(ec)), _Code(ec) { }
 
 namespace InterOp {
     void AsyncResumePrevious() noexcept { _CurrentExecutor->ResumeSink(); }
@@ -46,10 +34,10 @@ namespace InterOp {
     IExecTask* AsyncGetCurrent() noexcept { return _CurrentExecutor; }
 
     void AsyncCall(IExecTask* inner) noexcept {
-        ThreadPool::Enqueue(Temp::Allocate<AsyncExecutor>(inner));
+        ThreadPool::Enqueue(Temp::New<AsyncExecutor>(inner));
     }
 
     void AsyncCallSync(IExecTask* inner) noexcept {
-        (Temp::Allocate<AsyncExecutor>(inner))->Exec();
+        (Temp::New<AsyncExecutor>(inner))->Exec();
     }
 }

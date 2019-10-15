@@ -9,8 +9,8 @@
 #include <condition_variable>
 
 #include "ThreadPool.h"
-#include "Threading/SpinWait.h"
-#include "Utilities/TempAlloc.h"
+#include "Core/Threading/SpinWait.h"
+#include "Core/Utilities/TempAlloc.h"
 
 // TODO: Reduce Allocation Calls
 enum class FutureErrorCode : int {
@@ -59,7 +59,7 @@ public:
         }
     }
 
-    void Setup(ContinuationFlag flag, AsyncContinuationContext* context) noexcept {
+    void Setup(const ContinuationFlag flag, AsyncContinuationContext* context) noexcept {
         SetFlag(flag);
         if (flag!=ContinuationFlag::ExecOnCompletionInvocation) {
             if (context) {
@@ -71,25 +71,25 @@ public:
         }
     }
 
-    void SetFlag(ContinuationFlag flag) noexcept { _Flag = flag; }
+    void SetFlag(const ContinuationFlag flag) noexcept { _Flag = flag; }
 
     void SetContext(AsyncContinuationContext* context) noexcept { _Context = context; }
 
     void Capture() noexcept { SetContext(AsyncContinuationContext::CaptureCurrent()); }
 private:
-    ContinuationFlag _Flag;
-    AsyncContinuationContext* _Context;
+    ContinuationFlag _Flag {};
+    AsyncContinuationContext* _Context {};
 
     void DoAsyncDispatchContinuation() noexcept { _Context->Reschedule(this); }
 };
 
 class FutureError : public std::logic_error {
 public:
-    explicit FutureError(FutureErrorCode ec);
+    NRTCORE_API explicit FutureError(FutureErrorCode ec);
 
-    const auto& code() const noexcept { return _Code; }
+    [[nodiscard]] const auto& Code() const noexcept { return _Code; }
 
-    [[noreturn]] static void __throw(FutureErrorCode ec) { throw FutureError(ec); }
+    [[noreturn]] static void Throw(const FutureErrorCode ec) { throw FutureError(ec); }
 private:
     FutureErrorCode _Code;
 };
@@ -109,7 +109,7 @@ namespace InterOp {
 
         struct SyncPmrData {
             std::mutex Mutex{};
-            std::condition_variable CV{};
+            std::condition_variable Cv{};
         };
 
         auto GetPmrAddress() const noexcept {
@@ -117,7 +117,7 @@ namespace InterOp {
         }
 
         auto EnablePmr() const {
-            const auto newPmr = Temp::Allocate<SyncPmrData>();
+            const auto newPmr = Temp::New<SyncPmrData>();
             _Lock.fetch_or(reinterpret_cast<uintptr_t>(newPmr));
             return newPmr;
         }
@@ -125,7 +125,7 @@ namespace InterOp {
         void NotifyIfPmrEnabled() const noexcept {
             if (const auto pmr = GetPmrAddress(); pmr) {
                 std::lock_guard<std::mutex> lk(pmr->Mutex);
-                pmr->CV.notify_all();
+                pmr->Cv.notify_all();
             }
         }
 
@@ -166,7 +166,7 @@ namespace InterOp {
     protected:
         void PrepareWrite() const {
             const auto success = TryAcquireWriteAccess();
-            if (!success) FutureError::__throw(FutureErrorCode::PromiseAlreadySatisfied);
+            if (!success) FutureError::Throw(FutureErrorCode::PromiseAlreadySatisfied);
         }
 
         void CompleteWrite() noexcept {
@@ -175,7 +175,7 @@ namespace InterOp {
             DoScheduleContinuation();
         }
 
-        void PrepareWriteUnsafe() const noexcept { }
+		void PrepareWriteUnsafe() const noexcept { (void)this; }
 
         void CompleteWriteUnsafe() noexcept {
             _Lock.fetch_or(ReadyBit | WriteBit);
@@ -190,7 +190,7 @@ namespace InterOp {
                 auto _ = PrepareWait();
                 std::unique_lock<std::mutex> lk(_->Mutex);
                 while (!IsReady())
-                    _->CV.wait(lk);
+                    _->Cv.wait(lk);
             }
         }
 
@@ -200,7 +200,7 @@ namespace InterOp {
                 auto _ = PrepareWait();
                 std::unique_lock<std::mutex> lk(_->Mutex);
                 while (!IsReady() && Clock::now()<absTime)
-                    _->CV.wait_until(lk, absTime);
+                    _->Cv.wait_until(lk, absTime);
             }
             return IsReady();
         }
@@ -225,7 +225,7 @@ namespace InterOp {
             AcquireSpinLock();
             if (!CheckNotExpiredReadyBit()) {
                 ReleaseSpinLock();
-                FutureError::__throw(FutureErrorCode::FutureAlreadyRetrieved);
+                FutureError::Throw(FutureErrorCode::FutureAlreadyRetrieved);
             }
             MakeExpire();
             ReleaseSpinLock();
@@ -261,7 +261,7 @@ namespace InterOp {
             }
         }
     public:
-        virtual ~SharedAssociatedStateBase() { if (const auto _ = GetPmrAddress(); _) Temp::Deallocate(_); }
+        virtual ~SharedAssociatedStateBase() { if (const auto _ = GetPmrAddress(); _) Temp::Delete(_); }
 
     private:
         // Data Store
@@ -282,7 +282,7 @@ namespace InterOp {
 
         void Acquire() const noexcept { _RefCount.fetch_add(1); }
 
-        void Release() const noexcept { if (_RefCount.fetch_sub(1)==1) Temp::Deallocate(this); }
+        void Release() const noexcept { if (_RefCount.fetch_sub(1)==1) Temp::Delete(this); }
     };
 
     template <class T>
@@ -360,7 +360,7 @@ namespace InterOp {
             return *_Value;
         }
     private:
-        T* _Value;
+        T* _Value {};
     };
 
     template <>
@@ -434,7 +434,7 @@ namespace InterOp {
             catch (...) {
                 _Promise.SetExceptionUnsafe(std::current_exception());
             }
-            Temp::Deallocate(this);
+            Temp::Delete(this);
         }
 
         auto GetFuture() { return _Promise.GetFuture(); }
@@ -466,9 +466,9 @@ namespace InterOp {
 
         ~FutureBase() { ReleaseState(); }
 
-        bool Valid() const noexcept { return _State ? _State->Valid() : false; }
+        [[nodiscard]] bool Valid() const noexcept { return _State ? _State->Valid() : false; }
 
-        bool IsReady() const noexcept { return _State->IsReady(); }
+        [[nodiscard]] bool IsReady() const noexcept { return _State->IsReady(); }
 
         void Wait() const { _State->Wait(); }
 
@@ -485,7 +485,7 @@ namespace InterOp {
         template <class Func>
         auto Then(Func fn, ContinuationFlag flag = ContinuationFlag::ExecOnCompletionInvocation,
                 AsyncContinuationContext* context = nullptr) {
-            auto task = TempAlloc::Allocate<DeferredProcedureCallTask<std::decay_t<Func>, Future<T>>>(
+            auto task = Temp::New<DeferredProcedureCallTask<std::decay_t<Func>, Future<T>>>(
                     std::forward<std::decay_t<Func>>(std::move(fn)),
                     Future(nullptr, _State)
             );
@@ -506,6 +506,8 @@ namespace InterOp {
         struct ReleaseRAII {
             explicit ReleaseRAII(FutureBase* _) noexcept
                     :_This(_) { }
+			ReleaseRAII(const ReleaseRAII&) = delete;
+			ReleaseRAII& operator=(const ReleaseRAII&) = delete;
             ReleaseRAII(ReleaseRAII&&) = delete;
             ReleaseRAII& operator=(ReleaseRAII&&) = delete;
             ~ReleaseRAII() noexcept { _This->ReleaseState(); }
@@ -553,12 +555,12 @@ namespace InterOp {
     protected:
         SharedAssociatedState<T>& GetState() {
             if (_State) return *_State;
-            FutureError::__throw(FutureErrorCode::NoState);
+            FutureError::Throw(FutureErrorCode::NoState);
         }
         SharedAssociatedState<T>* _State = MakeState();
     private:
         static SharedAssociatedState<T>* MakeState() {
-            auto _ = Temp::Allocate<SharedAssociatedState<T>>();
+            auto _ = Temp::New<SharedAssociatedState<T>>();
             _->Acquire();
             return _;
         }
@@ -648,70 +650,3 @@ public:
 
     void SetValueUnsafe() noexcept { GetState().SetValueUnsafe(); }
 };
-
-namespace InterOp {
-    void AsyncResumePrevious() noexcept;
-
-    IExecTask* AsyncGetCurrent() noexcept;
-
-    void AsyncCall(IExecTask* inner) noexcept;
-
-    void AsyncCallSync(IExecTask* inner) noexcept;
-}
-
-template <template <class> class Cont, class U>
-U Await(Cont<U> cont) {
-    const auto context = InterOp::AsyncGetCurrent();
-    if (!context) {
-        throw std::runtime_error("awaiting on none async context");
-    }
-    if constexpr (std::is_same_v<U, void>) {
-        auto fu = cont.Then([task = context](auto&& lst) {
-            ThreadPool::Enqueue(std::unique_ptr<IExecTask>(task));
-            lst.Get();
-        });
-        InterOp::AsyncResumePrevious();
-        fu.Get();
-    }
-    else {
-        auto fu = cont.Then([task = context](auto&& lst) {
-            ThreadPool::Enqueue(std::unique_ptr<IExecTask>(task));
-            return lst.Get();
-        });
-        InterOp::AsyncResumePrevious();
-        return fu.Get();
-    };
-}
-
-template <class Func, class ...Ts>
-auto Async(Func func, Ts&& ... args) {
-    auto inner = Temp::Allocate<InterOp::DeferredProcedureCallTask<std::decay_t<Func>, Ts...>>(
-            std::forward<std::decay_t<Func>>(std::move(func)),
-            std::forward<Ts>(args)...
-    );
-    auto future = inner->GetFuture();
-    InterOp::AsyncCall(inner);
-    return future;
-}
-
-template <class Func, class ...Ts>
-auto AsyncLight(Func func, Ts&& ... args) {
-    auto inner = Temp::Allocate<InterOp::DeferredProcedureCallTask<std::decay_t<Func>, Ts...>>(
-            std::forward<std::decay_t<Func>>(std::move(func)),
-            std::forward<Ts>(args)...
-    );
-    auto future = inner->GetFuture();
-    ThreadPool::Enqueue(inner);
-    return future;
-}
-
-template <class Func, class ...Ts>
-auto AsyncHere(Func func, Ts&& ... args) {
-    auto inner = Temp::Allocate<InterOp::DeferredProcedureCallTask<std::decay_t<Func>, Ts...>>(
-            std::forward<std::decay_t<Func>>(std::move(func)),
-            std::forward<Ts>(args)...
-    );
-    auto future = inner->GetFuture();
-    InterOp::AsyncCallSync(inner);
-    return future;
-}

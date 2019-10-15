@@ -32,7 +32,7 @@ private:
 };
 
 #elif __has_include(<Windows.h>)
-#include "Utilities/System/WindowsLess.h"
+#include "Core/Utilities/System/WindowsLess.h"
 class Semaphore {
 public:
     Semaphore() noexcept
@@ -76,4 +76,16 @@ public:
 private:
     sem_t _Semaphore;
 };
+#else
+class Semaphore {
+public:
+	Semaphore() noexcept {}
+
+	~Semaphore() noexcept {}
+
+	void Wait() noexcept {}
+
+	void Signal() noexcept {}
+};
+# error "No Adaquate Semaphore Supported to be adapted from"
 #endif

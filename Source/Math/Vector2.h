@@ -13,7 +13,7 @@ struct Vec2 {
         };
     };
 
-    constexpr Vec2() noexcept = default;
+    constexpr Vec2() noexcept: Data{} {}
 
     constexpr Vec2(T x, T y) noexcept
             :X(x), Y(y) { }
@@ -165,13 +165,13 @@ constexpr T ManhattanDistance(const Vec2<T>& l, const Vec2<T>& r) noexcept {
     return std::abs(l.X-r.X)+std::abs(l.Y-r.Y)+std::abs(l.Z-r.Z);
 }
 
-using Char3 = Vec2<int8_t>;
-using Byte3 = Vec2<uint8_t>;
-using Short3 = Vec2<int16_t>;
-using UShort3 = Vec2<uint16_t>;
-using Int3 = Vec2<int32_t>;
-using UInt3 = Vec2<uint32_t>;
-using Long3 = Vec2<int64_t>;
-using ULong3 = Vec2<uint64_t>;
-using Float3 = Vec2<float>;
-using Double3 = Vec2<double>;
+using Char2 = Vec2<int8_t>;
+using Byte2 = Vec2<uint8_t>;
+using Short2 = Vec2<int16_t>;
+using UShort2 = Vec2<uint16_t>;
+using Int2 = Vec2<int32_t>;
+using UInt2 = Vec2<uint32_t>;
+using Long2 = Vec2<int64_t>;
+using ULong2 = Vec2<uint64_t>;
+using Float2 = Vec2<float>;
+using Double2 = Vec2<double>;
