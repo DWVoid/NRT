@@ -1,0 +1,15 @@
+enable_testing()
+file(GLOB_RECURSE CORE_TEST Core/*.*)
+add_executable(NRT.Tests.Core ${CORE_TEST})
+target_link_libraries(NRT.Tests.Core NRT.Core gtest_main)
+add_test(NAME NRT.Tests.Core COMMAND NRT.Tests.Core)
+
+file(GLOB_RECURSE CONC_TEST Conc/*.*)
+add_executable(NRT.Tests.Conc ${CONC_TEST})
+target_link_libraries(NRT.Tests.Conc NRT.Conc gtest_main)
+add_test(NAME NRT.Tests.Conc COMMAND NRT.Tests.Conc)
+
+file(GLOB_RECURSE MSG_TEST Msg/*.*)
+add_executable(NRT.Tests.Msg ${MSG_TEST})
+target_link_libraries(NRT.Tests.Msg NRT.Msg gtest_main)
+add_test(NAME NRT.Tests.Msg COMMAND NRT.Tests.Msg)

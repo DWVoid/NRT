@@ -19,7 +19,7 @@ private:
     static constexpr unsigned int YieldThreshold = 10; // When to switch over to a true yield.
     static constexpr unsigned int Sleep0EveryHowManyYields = 5; // After how many yields should we Sleep(0)?
     static constexpr unsigned int DefaultSleep1Threshold = 20; // After how many yields should we Sleep(1) frequently?
-    static bool IsSingleProcessor;
+	NRTCORE_API static bool IsSingleProcessor;
 public:
 	NRTCORE_API static unsigned int OptimalMaxSpinWaitsPerSpinIteration;
 	NRTCORE_API static unsigned int SpinCountForSpinBeforeWait;

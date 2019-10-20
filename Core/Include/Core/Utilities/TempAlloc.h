@@ -44,6 +44,7 @@ public:
 	template <class T>
 	struct Allocator : private std::allocator<T> {
 	private:
+
 		static constexpr uintptr_t Align() noexcept {
 			const auto trim = sizeof(T) / alignof(T) * alignof(T);
 			return trim != sizeof(T) ? trim + alignof(T) : sizeof(T);
@@ -59,6 +60,8 @@ public:
 		using is_always_equal = std::true_type;
 		using propagate_on_container_move_assignment = std::true_type;
 
+		constexpr Allocator() noexcept = default;
+		
 		template <class U>
 		explicit constexpr Allocator(const Allocator<U>&) noexcept {}
 

@@ -466,6 +466,8 @@ namespace InterOp {
 
         ~FutureBase() { ReleaseState(); }
 
+		[[nodiscard]] bool HasState() const noexcept { return _State; }
+
         [[nodiscard]] bool Valid() const noexcept { return _State ? _State->Valid() : false; }
 
         [[nodiscard]] bool IsReady() const noexcept { return _State->IsReady(); }
@@ -514,9 +516,9 @@ namespace InterOp {
             FutureBase* _This;
         };
 
-        auto CreateRAII() noexcept { return ReleaseRAII(this); }
+        auto CreateRaii() noexcept { return ReleaseRAII(this); }
 
-        InterOp::SharedAssociatedState<T>* _State = nullptr;
+        SharedAssociatedState<T>* _State = nullptr;
     };
 
     template <class T>
@@ -579,7 +581,7 @@ class Future : public InterOp::FutureBase<T> {
 public:
     Future() noexcept = default;
     auto Get() {
-        auto _ = InterOp::FutureBase<T>::template CreateRAII();
+        auto _ = InterOp::FutureBase<T>::template CreateRaii();
         return InterOp::FutureBase<T>::template _State->Get();
     }
 };
@@ -596,7 +598,7 @@ class Future<T&> : public InterOp::FutureBase<T&> {
 public:
     Future() noexcept = default;
     auto& Get() {
-        auto _ = InterOp::FutureBase<T&>::template CreateRAII();
+        auto _ = InterOp::FutureBase<T&>::template CreateRaii();
         return InterOp::FutureBase<T&>::template _State->Get();
     }
 };
@@ -612,7 +614,7 @@ class Future<void> : public InterOp::FutureBase<void> {
 public:
     Future() noexcept = default;
     void Get() {
-        auto _ = CreateRAII();
+        auto _ = CreateRaii();
         _State->Get();
     }
 };
