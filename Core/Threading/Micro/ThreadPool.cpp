@@ -1,3 +1,4 @@
+#include <cstddef>
 #include "Core/Threading/Micro/ThreadPool.h"
 #include "Core/Threading/SpinLock.h"
 #include "Core/Threading/Semaphore.h"
@@ -60,8 +61,8 @@ namespace {
         struct Iterator {
             constexpr Iterator() noexcept : Blk(nullptr), Off(0) {}
             explicit operator bool() const noexcept { return Blk; }
-            bool operator != (const Iterator& r) const noexcept { return (Blk != r.Blk) || (Off != r.Off); }
-            bool operator == (const Iterator& r) const noexcept { return (Blk == r.Blk) && (Off == r.Off); }
+            bool operator !=(const Iterator& r) const noexcept { return (Blk != r.Blk) || (Off != r.Off); }
+            bool operator ==(const Iterator& r) const noexcept { return (Blk == r.Blk) && (Off == r.Off); }
             Node* Blk;
             uintptr_t Off;
         };
@@ -81,7 +82,7 @@ namespace {
             Utilities::InterOp::AsyncTidyLocalG0();
         }
 
-        IExecTask* Pop()  noexcept {
+        IExecTask* Pop() noexcept {
             _Spin.Enter();
             const auto ret = reinterpret_cast<IExecTask*>(_Exec.Pop());
             _Spin.Leave();
@@ -89,30 +90,21 @@ namespace {
         }
 
         [[nodiscard]] bool SnapshotCheck() const noexcept {
-            if (!_Exec.Empty()) {
-                return true;
-            }
+            if (!_Exec.Empty()) { return true; }
             for (auto current = Next; current != this; current = current->Next) {
-                if (!current->_Exec.Empty()) {
-                    return true;
-                }
+                if (!current->_Exec.Empty()) { return true; }
             }
             return false;
         }
 
         IExecTask* TryDequeue() noexcept {
-            if (const auto res = Pop(); res) {
-                return res;
-            }
+            if (const auto res = Pop(); res) { return res; }
             for (auto current = Next; current != this; current = current->Next) {
-                if (!current->_Exec.Empty()) {
-                    if (const auto res = current->Pop(); res) {
-                        return res;
-                    }
-                }
+                if (!current->_Exec.Empty()) { if (const auto res = current->Pop(); res) { return res; } }
             }
             return nullptr;
         }
+
     private:
         SpinLock _Spin;
         SyncQueue _Exec;
@@ -146,12 +138,13 @@ namespace {
         }
 
         static auto& Instance() {
-            static QueueGroup instance {};
+            static QueueGroup instance{};
             return instance;
         }
+
     private:
         SpinLock _Lock;
-        Queue* _First{ nullptr };
+        Queue* _First{nullptr};
     };
 
     auto& GetCurrentQueue() {
@@ -166,12 +159,10 @@ namespace {
         explicit Implementation(int threadCount) {
             QueueGroup::Instance().Add(_GlobalQueue);
             _Workers.reserve(threadCount);
-            for (auto i = 0; i < threadCount; i++) {
-                _Workers.emplace_back(std::make_unique<Worker>(*this));
-            }
+            for (auto i = 0; i < threadCount; i++) { _Workers.emplace_back(std::make_unique<Worker>(*this)); }
         }
 
-        ~Implementation() noexcept { Utilities::InterOp::StopOnThreadPoolStop();  }
+        ~Implementation() noexcept { Utilities::InterOp::StopOnThreadPoolStop(); }
 
         void Stop() noexcept {
             if (_Stat.Running.exchange(false)) {
@@ -190,17 +181,13 @@ namespace {
                         return;
                     }
                 }
-                else {
-                    return;
-                }
+                else { return; }
             }
         }
 
         void WakeAll() noexcept {
             const auto c = _Park.Count.exchange(0);
-            for (int i = 0; i < c; ++i) {
-                _Park.Signal.Signal();
-            }
+            for (int i = 0; i < c; ++i) { _Park.Signal.Signal(); }
         }
 
         void MakePanic() noexcept { _Stat.Panic = true; }
@@ -211,12 +198,12 @@ namespace {
 
         struct RuntimeInfo {
             std::atomic_int MaxId = 0;
-            std::atomic_bool Running{ true };
-            std::atomic_bool Panic{ false };
+            std::atomic_bool Running{true};
+            std::atomic_bool Panic{false};
         } _Stat;
 
         struct Park {
-            std::atomic_int Count {0};
+            std::atomic_int Count{0};
             Semaphore Signal{};
         } _Park;
 
@@ -228,17 +215,13 @@ namespace {
 
             Worker(Worker&&) noexcept = default;
 
-            Worker& operator=(Worker&& )noexcept = delete;
+            Worker& operator=(Worker&&) noexcept = delete;
 
             Worker(const Worker&) = delete;
 
             Worker& operator=(const Worker&) = delete;
 
-            ~Worker() {
-                if (_Thread.joinable()) {
-                    _Thread.join();
-                }
-            }
+            ~Worker() { if (_Thread.joinable()) { _Thread.join(); } }
 
             void Work() const noexcept {
                 InitQueue();
@@ -246,15 +229,12 @@ namespace {
                 try {
                     while (_Pool._Stat.Running) {
                         DoWorks();
-                        if (_Pool._Stat.Running) {
-                            Rest();
-                        }
+                        if (_Pool._Stat.Running) { Rest(); }
                     }
                 }
-                catch (...) {
-                    PanicIfNotAlready();
-                }
+                catch (...) { PanicIfNotAlready(); }
             }
+
         private:
             void InitQueue() const noexcept {
                 auto& queue = GetCurrentQueue();
@@ -262,24 +242,16 @@ namespace {
                 QueueGroup::Instance().Add(queue);
             }
 
-            void InitInvokeId() const noexcept {
-                _InstanceInvokeId = _Pool._Stat.MaxId.fetch_add(1);
-            }
+            void InitInvokeId() const noexcept { _InstanceInvokeId = _Pool._Stat.MaxId.fetch_add(1); }
 
             [[nodiscard]] IExecTask* FetchWork() const {
-                if (_Pool._Stat.Panic) {
-                    WorkerPanic();
-                }
-                if (auto exec = _Queue->TryDequeue(); exec) {
-                    return exec;
-                }
+                if (_Pool._Stat.Panic) { WorkerPanic(); }
+                if (auto exec = _Queue->TryDequeue(); exec) { return exec; }
                 else {
                     SpinWait spinner{};
                     for (auto i = 0u; i < SpinWait::SpinCountForSpinBeforeWait; ++i) {
                         spinner.SpinOnce();
-                        if (exec = _Queue->TryDequeue(); exec) {
-                            return exec;
-                        }
+                        if (exec = _Queue->TryDequeue(); exec) { return exec; }
                     }
                     return nullptr;
                 }
@@ -295,25 +267,15 @@ namespace {
                 }
                 // to keep integrity, this thread will enter sleep state regardless of whether if the snapshot check is positive
                 _Pool._Park.Signal.Wait();
-                if (_Pool._Stat.Panic) {
-                    WorkerPanic();
-                }
+                if (_Pool._Stat.Panic) { WorkerPanic(); }
             }
 
-            void PanicIfNotAlready() const {
-                if (!_Pool._Stat.Panic.exchange(true)) {
-                    ThreadPool::Panic();
-                }
-            }
+            void PanicIfNotAlready() const { if (!_Pool._Stat.Panic.exchange(true)) { ThreadPool::Panic(); } }
 
             void DoWorks() const {
                 for (;;) {
-                    if (auto exec = FetchWork(); exec) {
-                        exec->Exec();
-                    }
-                    else {
-                        return;
-                    }
+                    if (auto exec = FetchWork(); exec) { exec->Exec(); }
+                    else { return; }
                 }
             }
 
@@ -336,26 +298,20 @@ namespace Utilities::InterOp {
     }
 }
 
-bool ThreadPool::LocalEnqueue(IExecTask* task)  noexcept {
-    if (const auto queue = GetCurrentQueue(); queue) {
-        queue->Push(task);
-    }
+bool ThreadPool::LocalEnqueue(IExecTask* task) noexcept {
+    if (const auto queue = GetCurrentQueue(); queue) { queue->Push(task); }
     return false;
 }
 
 void ThreadPool::Enqueue(IExecTask* task) noexcept {
-    if (!LocalEnqueue(task)) {
-        _Impl.Global().Push(task);
-    }
+    if (!LocalEnqueue(task)) { _Impl.Global().Push(task); }
     _Impl.WakeOne();
 }
 
 void ThreadPool::Spawn(AInstancedExecTask* task) noexcept {
     const auto zero = &_Impl.Global();
     const auto taskRaw = task;
-    for (auto current = zero; current!=zero; current = current->Next) {
-        current->Push(taskRaw);
-    }
+    for (auto current = zero; current != zero; current = current->Next) { current->Push(taskRaw); }
     _Impl.WakeAll();
 }
 

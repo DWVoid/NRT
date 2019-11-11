@@ -18,9 +18,8 @@ public:
 private:
     void WaitUntilLockIsFree() const noexcept {
         SpinWait spinner{};
-        while (__lock.load(std::memory_order_relaxed)) {
-            spinner.SpinOnce();
-        }
+        while (__lock.load(std::memory_order_relaxed)) { spinner.SpinOnce(); }
     }
+
     alignas(64) std::atomic_bool __lock = {false};
 };

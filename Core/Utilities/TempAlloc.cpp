@@ -1,4 +1,6 @@
+#include <cstddef>
 #include <cstdlib>
+#include <cassert>
 #include "Core/Utilities/TempAlloc.h"
 #include "Core/Threading/SpinLock.h"
 #include "Core/Threading/Micro/Timer.h"
@@ -22,7 +24,7 @@ namespace {
 
         static uintptr_t Obtain() noexcept { return reinterpret_cast<uintptr_t>(AllocateBlock()); }
 
-        static void MarkAlloc(const uintptr_t blk) noexcept { ++reinterpret_cast<MemBlock*>(blk)->Alloc; }
+        static void MarkAlloc(const uintptr_t blk) noexcept { ++reinterpret_cast<MemBlock*>(blk)->s.Alloc; }
 
         static void StopEdenTimedTidying() { Central::Instance().StopEdenTimedTidying(); }
 
@@ -35,30 +37,34 @@ namespace {
         static constexpr uintptr_t G1VacateThresholdThread = 2;
 
         union MemBlock {
-            explicit constexpr MemBlock(const uintptr_t rel = 0) noexcept : Alloc(0), Next(nullptr), ReleaseBase(rel), Dealloc(0) {}
+            struct S {
+                uint32_t Alloc = 0;
+                MemBlock* Next = nullptr;
+                uintptr_t ReleaseBase = 0;
+                alignas(Amd64CpuCacheSize) std::atomic_uint32_t Dealloc{0};
+            } s;
 
-            struct {
-                uint32_t Alloc;
-                MemBlock* Next;
-                uintptr_t ReleaseBase;
-                alignas(Amd64CpuCacheSize) std::atomic_uint32_t Dealloc;
-            };
+			explicit constexpr MemBlock(const uintptr_t rel = 0) noexcept: s{}{}
 
             char __UU_MEM__[BlockSize];
         };
 
-        static_assert(offsetof(MemBlock, Dealloc) == Amd64CpuCacheSize, "Incorrect Alignment");
+        static_assert(offsetof(MemBlock, s.Dealloc) == Amd64CpuCacheSize, "Incorrect Alignment");
 
         static MemBlock* AllocateBlock() noexcept {
 #ifdef SYSTEM_POSIX
             void* mem;
-            return new(posix_memalign(&mem, BlockSize, BlockSize)) MemBlock;
+            int ret = posix_memalign(&mem, BlockSize, BlockSize);
+            assert(ret == 0);
+            return new(mem) MemBlock;
 #elif defined(SYSTEM_WINDOWS)
             static constexpr auto AlignMask = BlockSize - 1;
             static constexpr auto AlignRev = ~AlignMask;
-            const auto base = reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr, BlockSize << 1, MEM_RESERVE, PAGE_READWRITE));
+            const auto base = reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr, BlockSize << 1, MEM_RESERVE,
+                                                                       PAGE_READWRITE));
             const auto loc = base & AlignMask ? (base & AlignRev) + BlockSize : base;
-            return new(VirtualAlloc(reinterpret_cast<LPVOID>(loc), BlockSize, MEM_COMMIT, PAGE_READWRITE)) MemBlock (base);
+            return new(VirtualAlloc(reinterpret_cast<LPVOID>(loc), BlockSize, MEM_COMMIT, PAGE_READWRITE)) MemBlock
+                (base);
 #endif
         }
 
@@ -66,7 +72,7 @@ namespace {
 #ifdef SYSTEM_POSIX
             free(blk);
 #elif defined(SYSTEM_WINDOWS)
-            VirtualFree(reinterpret_cast<LPVOID>(blk->ReleaseBase), 0, MEM_RELEASE);
+            VirtualFree(reinterpret_cast<LPVOID>(blk->s.ReleaseBase), 0, MEM_RELEASE);
 #endif
         }
 
@@ -76,7 +82,7 @@ namespace {
 
             Bin(Bin&& r) noexcept : _Count(r._Count), _First(r._First), _Last(r._Last) { r.Reset(); }
 
-            Bin& operator = (Bin&& r) noexcept {
+            Bin& operator =(Bin&& r) noexcept {
                 if (this != std::addressof(r)) {
                     _Count = r._Count;
                     _First = r._First;
@@ -88,33 +94,29 @@ namespace {
 
             Bin(const Bin&) = delete;
 
-            Bin& operator = (const Bin&) = delete;
+            Bin& operator =(const Bin&) = delete;
 
             ~Bin() noexcept = default;
 
             void Add(MemBlock* blk) noexcept {
                 ++_Count;
-                (_First ? _Last->Next : _First) = blk;
-                (_Last = blk)->Next = nullptr; // Same as bellow
+                (_First ? _Last->s.Next : _First) = blk;
+                (_Last = blk)->s.Next = nullptr; // Same as bellow
             }
 
             void Merge(Bin&& bin) noexcept {
                 _Count += bin._Count;
-                (_First ? _Last->Next : _First) = bin._First;
-                (_Last = bin._Last)->Next = nullptr; // For noting the end of chain
+                (_First ? _Last->s.Next : _First) = bin._First;
+                (_Last = bin._Last)->s.Next = nullptr; // For noting the end of chain
                 bin.Reset();
             }
 
             [[nodiscard]] Bin Tidy() && noexcept {
                 Bin result{};
                 for (auto x = _First; x;) {
-                    const auto next = x->Next;
-                    if (CouldRecycle(x)) {
-                        FreeBlock(x);
-                    }
-                    else {
-                        result.Add(x);
-                    }
+                    const auto next = x->s.Next;
+                    if (CouldRecycle(x)) { FreeBlock(x); }
+                    else { result.Add(x); }
                     x = next;
                 }
                 Reset();
@@ -125,15 +127,15 @@ namespace {
 
             [[nodiscard]] bool Empty() const noexcept { return !_Count; }
         private:
-            uintptr_t _Count {0};
-            MemBlock* _First{ nullptr }, * _Last{ nullptr };
+            uintptr_t _Count{0};
+            MemBlock *_First{nullptr}, *_Last{nullptr};
 
             void Reset() noexcept {
                 _Count = 0;
                 _First = _Last = nullptr;
             }
 
-            static bool CouldRecycle(MemBlock* blk) noexcept { return blk->Alloc == blk->Dealloc.load(); }
+            static bool CouldRecycle(MemBlock* blk) noexcept { return blk->s.Alloc == blk->s.Dealloc.load(); }
         };
 
         class Central final : CycleTask {
@@ -163,6 +165,7 @@ namespace {
                 static Central instance;
                 return instance;
             }
+
         private:
             Bin _G1, _Eden;
             SpinLock _G1Lock, _EdenLock;
@@ -193,9 +196,7 @@ namespace {
                     _G1.Merge(std::move(tidy));
                     auto vacated = VacateCheck();
                     _G1Lock.Leave();
-                    if (!vacated.Empty()) {
-                        CollectMergeEden(std::move(vacated));
-                    }
+                    if (!vacated.Empty()) { CollectMergeEden(std::move(vacated)); }
                 }
             }
 
@@ -240,9 +241,7 @@ namespace {
                 _Lock.Enter();
                 auto bin = std::move(_TransBin);
                 _Lock.Leave();
-                if (!bin.Empty()) {
-                    _Central.CollectMerge(std::move(bin));
-                }
+                if (!bin.Empty()) { _Central.CollectMerge(std::move(bin)); }
             }
 
             void Vacate() noexcept { SubmitMerge(std::move(_Bin)); }
@@ -253,7 +252,10 @@ namespace {
     public:
         static void* AllocateUnsafe(const uintptr_t size) noexcept { return Get()->AllocateUnsafe(size); }
 
-        static void Collect() noexcept { Get()->Collect(); BlockManager::Collect(); }
+        static void Collect() noexcept {
+            Get()->Collect();
+            BlockManager::Collect();
+        }
 
         static void DisableSweep() noexcept { Get()->DisableSweeping(); }
 
@@ -301,10 +303,14 @@ namespace {
 
             void DisableSweeping() noexcept { OnDemandTidy = false; }
 
-            void EnableSweeping() noexcept { OnDemandTidy = true; _Mgr.CheckTidyLocal(); }
+            void EnableSweeping() noexcept {
+                OnDemandTidy = true;
+                _Mgr.CheckTidyLocal();
+            }
+
         private:
             uintptr_t _Block{}, _Head{};
-            bool OnDemandTidy{ true };
+            bool OnDemandTidy{true};
             BlockManager _Mgr;
         };
 

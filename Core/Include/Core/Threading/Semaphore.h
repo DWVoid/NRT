@@ -33,23 +33,21 @@ private:
 
 #elif __has_include(<Windows.h>)
 #include "Core/Utilities/System/WindowsLess.h"
+
 class Semaphore {
 public:
     Semaphore() noexcept
-            :_Handle(CreateSemaphore(nullptr, 0, MAXLONG, nullptr)) { }
+        : _Handle(CreateSemaphore(nullptr, 0, MAXLONG, nullptr)) { }
 
-    ~Semaphore() noexcept {
-        CloseHandle(_Handle);
-    }
+    ~Semaphore() noexcept { CloseHandle(_Handle); }
 
-    void Wait() noexcept {
-        WaitForSingleObject(_Handle, INFINITE);
-    }
+    void Wait() noexcept { WaitForSingleObject(_Handle, INFINITE); }
 
     void Signal() noexcept {
         LONG __last;
         ReleaseSemaphore(_Handle, 1, &__last);
     }
+
 private:
     HANDLE _Handle;
 };

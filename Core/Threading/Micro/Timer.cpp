@@ -1,5 +1,6 @@
 #include "../../Utilities/InterOp.h"
 #include "Core/Threading/Micro/Timer.h"
+#include <condition_variable>
 #include <thread>
 #include <queue>
 #include <mutex>
@@ -12,15 +13,13 @@ namespace {
         void Stop() {
             if (!_Stop.exchange(true)) {
                 _QueueNotify.notify_all();
-                if (_Agent.joinable()) {
-                    _Agent.join();
-                }
+                if (_Agent.joinable()) { _Agent.join(); }
             }
         }
 
         void Submit(DelayedTask* task, const unsigned long long milli) noexcept {
             std::lock_guard<std::mutex> lk(_QueueLock);
-            _Queue.push({ task, std::chrono::steady_clock::now() + std::chrono::milliseconds(milli) });
+            _Queue.push({task, std::chrono::steady_clock::now() + std::chrono::milliseconds(milli)});
             _QueueNotify.notify_all();
         }
 
@@ -34,32 +33,25 @@ namespace {
         };
 
         struct Comp {
-            constexpr bool operator()(const DelayEntry& l, const DelayEntry& r) const noexcept {
-                return l.Due > r.Due;
-            }
+            constexpr bool operator()(const DelayEntry& l, const DelayEntry& r) const noexcept { return l.Due > r.Due; }
         };
 
         void Worker() noexcept {
-            std::unique_lock<std::mutex> lk{ _QueueLock };
+            std::unique_lock<std::mutex> lk{_QueueLock};
             while (!_Stop) {
                 if (!_Queue.empty()) {
                     while (std::chrono::steady_clock::now() < _Queue.top().Due && !_Queue.top().Task->IsCancelled()) {
                         _QueueNotify.wait_until(lk, _Queue.top().Due);
                     }
-                    if (auto task = _Queue.top().Task; task->IsCancelled()) {
-                        task->OnCancelled();
-                    }
-                    else {
-                        ThreadPool::Enqueue(task);
-                    }
+                    if (auto task = _Queue.top().Task; task->IsCancelled()) { task->OnCancelled(); }
+                    else { ThreadPool::Enqueue(task); }
                     _Queue.pop();
                 }
-                else {
-                    _QueueNotify.wait(lk);
-                }
+                else { _QueueNotify.wait(lk); }
             }
         }
-        std::atomic_bool _Stop {false};
+
+        std::atomic_bool _Stop{false};
         std::mutex _QueueLock;
         std::condition_variable _QueueNotify;
         std::priority_queue<DelayEntry, std::vector<DelayEntry>, Comp> _Queue;
@@ -67,9 +59,15 @@ namespace {
     } _Agent;
 }
 
-void DelayedTask::Submit() noexcept { _Cancel = false; _Agent.Submit(this, _Milli); }
+void DelayedTask::Submit() noexcept {
+    _Cancel = false;
+    _Agent.Submit(this, _Milli);
+}
 
-void DelayedTask::Cancel() noexcept { _Cancel = true; _Agent.Cancel(); }
+void DelayedTask::Cancel() noexcept {
+    _Cancel = true;
+    _Agent.Cancel();
+}
 
 void CycleTask::Exec() noexcept {
     if (_Enabled && _Agent.Running()) {
