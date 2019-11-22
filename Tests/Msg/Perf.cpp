@@ -19,7 +19,7 @@ void AsyncTestComplete(const Future<void>& fut, const std::chrono::system_clock:
 TEST(NrtMsgCorr, TcpCommunicate) {
 	auto srv = IHostTcp::Create("127.0.0.1", 31111);
 	auto client = IEndPointTcp::Create("127.0.0.1", 31111);
-	auto endpoint = srv->Accept().Get();
+	auto endpoint = srv->ExpectClient().Get();
 	char* out = "Hello World";
 	endpoint->Send(157, 12, reinterpret_cast<std::byte*>(out)).Wait();
 	auto res = client->Wait().Get();

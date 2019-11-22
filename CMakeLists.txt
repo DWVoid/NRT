@@ -36,6 +36,10 @@ if (NRT_BUILD_ALL OR NRT_BUILD_MSG)
     add_subdirectory(Msg)
 endif()
 
+if (NRT_BUILD_ALL OR NRT_BUILD_OGL)
+    add_subdirectory(GL.OpenGL)
+endif()
+
 # Add GTest
 if (NRT_BUILD_ALL OR NRT_BUILD_TEST)
     include(FetchContent)

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 # Actually, we want asio
+set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS system)
 
 if (Boost_FOUND)

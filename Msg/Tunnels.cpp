@@ -200,7 +200,7 @@ namespace {
 		TcpHost(boost::asio::io_context& ioService, const boost::asio::ip::address& address, const int port)
 			: acceptor_(ioService, tcp::endpoint(tcp::v4(), port)), _Context(ioService) { (void)_Srv; }
 
-		Future<std::unique_ptr<IEndPointTcp>> Accept() override {
+		Future<std::unique_ptr<IEndPointTcp>> ExpectClient() override {
 			Promise<std::unique_ptr<IEndPointTcp>> complete;
 			auto fut = complete.GetFuture();
 			auto newConn = TcpConnection::Create(_Context);

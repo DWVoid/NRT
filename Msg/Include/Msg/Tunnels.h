@@ -37,6 +37,6 @@ struct IHostTcp {
 	IHostTcp& operator=(IHostTcp&&) = delete;
 	IHostTcp& operator=(const IHostTcp&) = delete;
 	virtual ~IHostTcp() noexcept = default;
-	virtual Future<std::unique_ptr<IEndPointTcp>> Accept() = 0;
+	virtual Future<std::unique_ptr<IEndPointTcp>> ExpectClient() = 0;
 	NRTMSG_API static std::unique_ptr<IHostTcp> Create(std::string_view address, int port);
 };
