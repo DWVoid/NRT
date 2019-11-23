@@ -1,3 +1,6 @@
+
+#include <OpenGL/Objects.h>
+
 #include "Support.h"
 
 namespace {

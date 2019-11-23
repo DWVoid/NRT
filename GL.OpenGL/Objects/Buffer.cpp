@@ -4,7 +4,7 @@ namespace {
     OpenGL::LongPtr Fn[15];
 
     constexpr const char *Name =
-            "glCreateBuffers\0glNamedBufferStorage\0glNamedBufferData\0glNamedBufferSubData\0"
+            "glCreateBuffers\0glNamedBufferStorage\0glDeleteBuffers\0glNamedBufferSubData\0"
             "glCopyNamedBufferSubData\0glClearNamedBufferData\0glClearNamedBufferSubData\0glMapNamedBuffer\0"
             "glMapNamedBufferRange\0glUnmapNamedBuffer\0glFlushMappedNamedBufferRange\0glGetNamedBufferParameteriv\0"
             "glGetNamedBufferParameteri64v\0glGetNamedBufferPointerv\0glGetNamedBufferSubData\0";
@@ -12,6 +12,7 @@ namespace {
 
 namespace OpenGL {
     Buffer::~Buffer() noexcept {
+        Get<PFNGLDELETEBUFFERSPROC>(Fn[2])(1, &mHandle);
     }
 
     void Buffer::Create() noexcept {

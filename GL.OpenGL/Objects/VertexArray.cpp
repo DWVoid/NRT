@@ -1,14 +1,14 @@
 #include "Support.h"
 
 namespace {
-    OpenGL::LongPtr Fn[14];
+    OpenGL::LongPtr Fn[15];
 
     constexpr const char *Name =
             "glCreateVertexArrays\0glDisableVertexArrayAttrib\0glEnableVertexArrayAttrib\0"
             "glVertexArrayElementBuffer\0glVertexArrayVertexBuffer\0glVertexArrayVertexBuffers\0"
             "glVertexArrayAttribBinding\0glVertexArrayAttribFormat\0glVertexArrayAttribIFormat\0"
             "glVertexArrayAttribLFormat\0glVertexArrayBindingDivisor\0glGetVertexArrayiv\0"
-            "glGetVertexArrayIndexediv\0glGetVertexArrayIndexed64iv\0";
+            "glGetVertexArrayIndexediv\0glGetVertexArrayIndexed64iv\0glDeleteVertexArrays\0";
 }
 
 namespace OpenGL {
@@ -73,7 +73,7 @@ namespace OpenGL {
     }
 
     VertexArray::~VertexArray() noexcept {
-
+        Get<PFNGLDELETEVERTEXARRAYSPROC>(Fn[14])(1, &mHandle);
     }
 
     void InitVertexArray() { Load(Fn, Name); }

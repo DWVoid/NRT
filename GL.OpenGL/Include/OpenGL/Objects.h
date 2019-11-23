@@ -216,6 +216,16 @@ namespace OpenGL {
 
     class Framebuffer final : public Handle {
     public:
+        constexpr Framebuffer() noexcept = default;
+
+        explicit Framebuffer(CreateTag) noexcept: Handle(NoInit) { Create(); }
+
+        Framebuffer(Framebuffer &&) = default;
+
+        Framebuffer &operator=(Framebuffer &&) = default;
+
+        NRTOGL_API ~Framebuffer() noexcept;
+
         NRTOGL_API void Create() noexcept;
 
         NRTOGL_API void Renderbuffer(GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer) noexcept;
@@ -255,6 +265,97 @@ namespace OpenGL {
         NRTOGL_API void GetParameteriv(GLenum pname, GLint *param) noexcept;
 
         NRTOGL_API void GetAttachmentParameteriv(GLenum attachment, GLenum pname, GLint *params) noexcept;
+    };
+
+    class Shader final : public Handle {
+    public:
+        constexpr Shader() noexcept = default;
+
+        explicit Shader(CreateTag, GLenum type) noexcept: Handle(NoInit) { Create(type); }
+
+        Shader(Shader &&) = default;
+
+        Shader &operator=(Shader &&) = default;
+
+        NRTOGL_API ~Shader() noexcept;
+
+        NRTOGL_API void Create(GLenum type) noexcept;
+
+        NRTOGL_API void Binary(const void *data, GLsizei length) noexcept;
+
+        NRTOGL_API void Specialize(const GLchar *pEntryPoint, GLuint numSpecializationConstants,
+                                   const GLuint *pConstantIndex, const GLuint *pConstantValue) noexcept;
+
+        NRTOGL_API void Getiv(GLenum pname, GLint *param) noexcept;
+
+        NRTOGL_API void GetInfoLog(GLsizei bufSize, GLsizei *length, GLchar *infoLog) noexcept;
+    };
+
+    class Program final : public Handle {
+    public:
+        constexpr Program() noexcept = default;
+
+        explicit Program(CreateTag) noexcept: Handle(NoInit) { Create(); }
+
+        Program(Program &&) = default;
+
+        Program &operator=(Program &&) = default;
+
+        NRTOGL_API ~Program() noexcept;
+
+        NRTOGL_API void Create() noexcept;
+
+        NRTOGL_API void Link() noexcept;
+    };
+
+    class ProgramPipeline final : public Handle {
+    public:
+        constexpr ProgramPipeline() noexcept = default;
+
+        explicit ProgramPipeline(CreateTag) noexcept: Handle(NoInit) { Create(); }
+
+        ProgramPipeline(ProgramPipeline &&) = default;
+
+        ProgramPipeline &operator=(ProgramPipeline &&) = default;
+
+        NRTOGL_API ~ProgramPipeline() noexcept;
+    };
+
+    class Sampler final : public mHandle {
+    public:
+        constexpr Sampler() noexcept = default;
+
+        explicit Sampler(CreateTag) noexcept: Handle(NoInit) { Create(); }
+
+        Sampler(Sampler &&) = default;
+
+        Sampler &operator=(Sampler &&) = default;
+
+        NRTOGL_API ~Sampler() noexcept;
+
+        NRTOGL_API void Create() noexcept;
+
+        NRTOGL_API void BindTexture(GLuint unit) noexcept;
+
+        NRTOGL_API void Parameteri(GLenum pname, GLint param) noexcept;
+
+        NRTOGL_API void Parameteriv(GLenum pname, const GLint *param) noexcept;
+
+        NRTOGL_API void Parameterf(GLenum pname, GLfloat param) noexcept;
+
+        NRTOGL_API void Parameterfv(GLenum pname, const GLfloat *param) noexcept;
+
+        NRTOGL_API void ParameterIiv(GLenum pname, const GLint *param) noexcept;
+
+        NRTOGL_API void ParameterIuiv(GLenum pname, const GLuint *param) noexcept;
+
+        NRTOGL_API void GetParameteriv(GLenum pname, GLint *params) noexcept;
+
+        NRTOGL_API void GetParameterIiv(GLenum pname, GLint *params) noexcept;
+
+        NRTOGL_API void GetParameterfv(GLenum pname, GLfloat *params) noexcept;
+
+        NRTOGL_API void GetParameterIuiv(GLenum pname, GLuint *params) noexcept;
     };
 
     using LongPtr = void (*)() noexcept;

@@ -16,5 +16,7 @@ namespace OpenGL {
 
     void InitTexture();
 
+    void InitSampler();
+
     void InitVertexArray();
 }

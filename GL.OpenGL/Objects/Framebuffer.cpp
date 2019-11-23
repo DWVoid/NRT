@@ -1,7 +1,10 @@
+
+#include <OpenGL/Objects.h>
+
 #include "Support.h"
 
 namespace {
-    OpenGL::LongPtr Fn[18];
+    OpenGL::LongPtr Fn[19];
 
     constexpr const char *Name =
             "glCreateFramebuffers\0glNamedFramebufferRenderbuffer\0glNamedFramebufferParameteri\0"
@@ -10,12 +13,12 @@ namespace {
             "glInvalidateNamedFramebufferSubData\0glClearNamedFramebufferiv\0glClearNamedFramebufferuiv\0"
             "glClearNamedFramebufferfv\0glClearNamedFramebufferfi\0glBlitNamedFramebuffer\0"
             "glCheckNamedFramebufferStatus\0glGetNamedFramebufferParameteriv\0"
-            "glGetNamedFramebufferAttachmentParameteriv\0";
+            "glGetNamedFramebufferAttachmentParameteriv\0glDeleteFramebuffers\0";
 }
 
 namespace OpenGL {
     void Framebuffer::Create() noexcept {
-        Get<PFNGLCREATEBUFFERSPROC>(Fn[0])(1, &mHandle);
+        Get<PFNGLCREATEFRAMEBUFFERSPROC>(Fn[0])(1, &mHandle);
     }
 
     void Framebuffer::Renderbuffer(GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer) noexcept {
@@ -90,6 +93,10 @@ namespace OpenGL {
 
     void Framebuffer::GetAttachmentParameteriv(GLenum attachment, GLenum pname, GLint *params) noexcept {
         Get<PFNGLGETNAMEDFRAMEBUFFERATTACHMENTPARAMETERIVPROC>(Fn[17])(mHandle, attachment, pname, params);
+    }
+
+    Framebuffer::~Framebuffer() noexcept {
+        Get<PFNGLDELETEFRAMEBUFFERSPROC>(Fn[18])(1, &mHandle);
     }
 
     void InitFramebuffer() { Load(Fn, Name); }

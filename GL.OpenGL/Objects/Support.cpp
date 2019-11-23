@@ -31,6 +31,7 @@ namespace OpenGL {
         InitBuffer();
         InitFramebuffer();
         InitTexture();
+        InitSampler();
         InitVertexArray();
     }
 }
