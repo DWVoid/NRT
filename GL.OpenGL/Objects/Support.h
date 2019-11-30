@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreArbFn.h"
-#include "OpenGL/Objects.h"
+#include "Objects.h"
 #include <type_traits>
 
 namespace OpenGL {
@@ -17,6 +17,8 @@ namespace OpenGL {
     void InitTexture();
 
     void InitSampler();
+
+    void InitShaders();
 
     void InitVertexArray();
 }

@@ -1,5 +1,5 @@
 
-#include <OpenGL/Objects.h>
+#include "Objects.h"
 
 #include "Support.h"
 
@@ -8,7 +8,8 @@ namespace {
 
     constexpr const char *Name =
             "glCreateShader\0glShaderBinary\0glGetShaderiv\0glGetShaderInfoLog\0glDeleteShader\0"
-            "glCreateProgram\0";
+            "glCreateProgram\0glProgramParameteri\0glLinkProgram\0glAttachShader\0glDetachShader\0"
+            "glGetProgramiv\0glGetProgramInfoLog\0glDeleteProgram\0";
 }
 
 namespace OpenGL {
@@ -42,9 +43,36 @@ namespace OpenGL {
 
     void Program::Create() noexcept {
         mHandle = Get<PFNGLCREATEPROGRAMPROC>(Fn[6])();
+        if (mHandle) {
+            Get<PFNGLPROGRAMPARAMETERIPROC>(Fn[7])(mHandle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        }
     }
 
     void Program::Link() noexcept {
-        Get<PFNGLLINKPROGRAMPROC>(Fn[7])(mHandle);
+        Get<PFNGLLINKPROGRAMPROC>(Fn[8])(mHandle);
     }
+
+    void Program::Attach(Shader &shader) noexcept {
+        Get<PFNGLATTACHSHADERPROC>(Fn[9])(mHandle, shader.Native());
+    }
+
+    void Program::Detach(Shader &shader) noexcept {
+        Get<PFNGLDETACHSHADERPROC>(Fn[10])(mHandle, shader.Native());
+    }
+
+    void Program::Getiv(GLenum pname, GLint *param) noexcept {
+        Get<PFNGLGETPROGRAMIVPROC>(Fn[11])(mHandle, pname, param);
+    }
+
+    void Program::GetInfoLog(GLsizei bufSize, GLsizei *length, GLchar *infoLog) noexcept {
+        Get<PFNGLGETPROGRAMINFOLOGPROC>(Fn[12])(mHandle, bufSize, length, infoLog);
+    }
+
+    Program::~Program() noexcept {
+        if (mHandle) {
+            Get<PFNGLDELETEPROGRAMPROC>(Fn[13])(mHandle);
+        }
+    }
+
+    void InitShaders() { Load(Fn, Name); }
 }

@@ -27,9 +27,9 @@ namespace OpenGL {
         Get<PFNGLNAMEDBUFFERSUBDATAPROC>(Fn[3])(mHandle, offset, size, data);
     }
 
-    void Buffer::CopySubData(GLuint readBuffer, GLuint writeBuffer,
+    void Buffer::CopySubData(Buffer& read, Buffer& write,
                              GLintptr readOffset, GLintptr writeOffset, GLsizeiptr size) noexcept {
-        Get<PFNGLCOPYNAMEDBUFFERSUBDATAPROC>(Fn[4])(readBuffer, writeBuffer, readOffset, writeOffset, size);
+        Get<PFNGLCOPYNAMEDBUFFERSUBDATAPROC>(Fn[4])(read.mHandle, write.mHandle, readOffset, writeOffset, size);
     }
 
     void Buffer::ClearData(GLenum internalformat, GLenum format, GLenum type, const void *data) noexcept {

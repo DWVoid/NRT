@@ -1,8 +1,16 @@
 #include "Support.h"
+#include "Objects.h"
+
 #include <string_view>
 #include <stdexcept>
 
 namespace OpenGL {
+    namespace {
+        LongPtr Fn[1];
+        constexpr const char* Name =
+                "glGetError\0";
+    }
+
     static FunctionProvider gProvider;
     static void *gProviderUser;
 
@@ -28,10 +36,14 @@ namespace OpenGL {
     }
 
     void Initialize() {
+        Load(Fn, Name);
         InitBuffer();
         InitFramebuffer();
         InitTexture();
         InitSampler();
+        InitShaders();
         InitVertexArray();
     }
+
+    GLenum Error() noexcept { return Get<PFNGLGETERRORPROC>(Fn[0])(); }
 }
