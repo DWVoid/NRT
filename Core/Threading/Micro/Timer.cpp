@@ -4,10 +4,15 @@
 #include <thread>
 #include <queue>
 #include <mutex>
+#include "Core/Utilities/TempAlloc.h"
 
 namespace {
     class TimeAgent {
     public:
+        TimeAgent() {
+            Utilities::InterOp::PreHeatTemp();
+        }
+
         ~TimeAgent() { Utilities::InterOp::StopOnTimerStop(); }
 
         void Stop() {

@@ -1,6 +1,7 @@
 #pragma once
 
 namespace Utilities::InterOp {
+    void PreHeatTemp() noexcept;
     void StopOnEdenCollectorStop() noexcept;
     void StopOnTimerStop() noexcept;
     void StopOnThreadPoolStop() noexcept;

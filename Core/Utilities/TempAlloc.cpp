@@ -78,7 +78,8 @@ namespace {
 
         class Bin {
         public:
-            constexpr Bin() noexcept = default;
+            // Workaround for Clang BUG
+            constexpr Bin() noexcept {}; // NOLINT
 
             Bin(Bin&& r) noexcept : _Count(r._Count), _First(r._First), _Last(r._Last) { r.Reset(); }
 
@@ -212,7 +213,8 @@ namespace {
 
         class G0 final : public IExecTask {
         public:
-            G0() noexcept = default;
+            // Workaround for Clang BUG
+            G0() noexcept {} // NOLINT
             G0(G0&&) = delete;
             G0(const G0&) = delete;
             G0& operator=(G0&&) = delete;
@@ -260,6 +262,8 @@ namespace {
         static void DisableSweep() noexcept { Get()->DisableSweeping(); }
 
         static void EnableSweep() noexcept { Get()->EnableSweeping(); }
+
+        static void Nothing() noexcept { Get(); }
     private:
         class Local final {
         public:
@@ -339,6 +343,8 @@ namespace Utilities::InterOp {
     void NoAsyncG0Tidy() noexcept { Implementation::DisableSweep(); }
 
     void AsyncTidyLocalG0() noexcept { Implementation::EnableSweep(); }
+
+    void PreHeatTemp() noexcept { Implementation::Nothing(); }
 }
 
 void Temp::Collect() noexcept { Implementation::Collect(); }

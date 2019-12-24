@@ -5,6 +5,7 @@
 #include "../../Utilities/InterOp.h"
 #include "Core/Utilities/TempAlloc.h"
 #include <vector>
+#include <future>
 
 namespace {
     class SyncQueue {
@@ -193,6 +194,8 @@ namespace {
         void MakePanic() noexcept { _Stat.Panic = true; }
 
         Queue& Global() const noexcept { return *_GlobalQueue; }
+
+        [[nodiscard]] int Count() const noexcept { return _Workers.size(); }
     private:
         struct Panic final : std::exception {};
 
@@ -210,7 +213,13 @@ namespace {
         class Worker {
         public:
             explicit Worker(Implementation& pool) noexcept : _Pool(pool) {
-                _Thread = std::thread([this]() { Work(); });
+                auto prm = new std::promise<void>();
+                _Thread = std::thread([this, prm]() {
+                    Init(*prm);
+                    Work();
+                });
+                prm->get_future().wait();
+                delete prm;
             }
 
             Worker(Worker&&) noexcept = default;
@@ -223,9 +232,13 @@ namespace {
 
             ~Worker() { if (_Thread.joinable()) { _Thread.join(); } }
 
-            void Work() const noexcept {
+            void Init(std::promise<void>& prm) noexcept {
                 InitQueue();
                 InitInvokeId();
+                prm.set_value();
+            }
+
+            void Work() const noexcept {
                 try {
                     while (_Pool._Stat.Running) {
                         DoWorks();
@@ -274,7 +287,9 @@ namespace {
 
             void DoWorks() const {
                 for (;;) {
-                    if (auto exec = FetchWork(); exec) { exec->Exec(); }
+                    if (auto exec = FetchWork(); exec) {
+                        exec->Exec();
+                    }
                     else { return; }
                 }
             }
@@ -299,19 +314,25 @@ namespace Utilities::InterOp {
 }
 
 bool ThreadPool::LocalEnqueue(IExecTask* task) noexcept {
-    if (const auto queue = GetCurrentQueue(); queue) { queue->Push(task); }
+    if (const auto queue = GetCurrentQueue(); queue) {
+        queue->Push(task);
+        _Impl.WakeOne();
+        return true;
+    }
     return false;
 }
 
 void ThreadPool::Enqueue(IExecTask* task) noexcept {
-    if (!LocalEnqueue(task)) { _Impl.Global().Push(task); }
-    _Impl.WakeOne();
+    if (!LocalEnqueue(task)) {
+        _Impl.Global().Push(task);
+        _Impl.WakeOne();
+    }
 }
 
 void ThreadPool::Spawn(AInstancedExecTask* task) noexcept {
     const auto zero = &_Impl.Global();
     const auto taskRaw = task;
-    for (auto current = zero; current != zero; current = current->Next) { current->Push(taskRaw); }
+    for (auto current = zero->Next; current != zero; current = current->Next) { current->Push(taskRaw); }
     _Impl.WakeAll();
 }
 
@@ -321,5 +342,7 @@ void ThreadPool::Panic() noexcept {
     _Impl.MakePanic();
     Utilities::InterOp::StopOnThreadPoolStop();
 }
+
+int ThreadPool::CountThreads() noexcept { return _Impl.Count(); }
 
 void AInstancedExecTask::Exec() noexcept { Exec(_InstanceInvokeId); }

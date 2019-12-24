@@ -26,6 +26,7 @@ public:
     explicit CycleTask(const std::chrono::duration<Rep, Period>& duration) noexcept: DelayedTask(duration) {}
 
     virtual void OnTimer() noexcept = 0;
+
     void Enable() noexcept { if (!_Enabled.exchange(true)) { Submit(); } }
 
     void Disable() noexcept {

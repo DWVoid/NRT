@@ -28,4 +28,5 @@ public:
     NRTCORE_API static void Spawn(AInstancedExecTask* task) noexcept;
     NRTCORE_API static void Stop() noexcept;
     NRTCORE_API static void Panic() noexcept;
+    NRTCORE_API static int CountThreads() noexcept;
 };
