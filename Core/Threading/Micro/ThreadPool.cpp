@@ -213,13 +213,10 @@ namespace {
         class Worker {
         public:
             explicit Worker(Implementation& pool) noexcept : _Pool(pool) {
-                auto prm = new std::promise<void>();
-                _Thread = std::thread([this, prm]() {
-                    Init(*prm);
+                _Thread = std::thread([this]() {
+                    Init();
                     Work();
                 });
-                prm->get_future().wait();
-                delete prm;
             }
 
             Worker(Worker&&) noexcept = default;
@@ -232,10 +229,9 @@ namespace {
 
             ~Worker() { if (_Thread.joinable()) { _Thread.join(); } }
 
-            void Init(std::promise<void>& prm) noexcept {
+            void Init() noexcept {
                 InitQueue();
                 InitInvokeId();
-                prm.set_value();
             }
 
             void Work() const noexcept {
