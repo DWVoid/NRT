@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.11)
 
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS context)
