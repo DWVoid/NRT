@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Slangs.h"
+#include "Compile/Slangs.h"
 
 #ifdef NRTCONC_BUILD
 #define NRTCONC_API EXPORT

@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <GL/Memory.h>
 #include <cassert>
+#include <new>
 #include "../Objects/Objects.h"
 
 namespace GL {

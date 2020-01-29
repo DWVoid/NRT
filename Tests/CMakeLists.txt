@@ -1,8 +1,14 @@
 enable_testing()
-file(GLOB_RECURSE CORE_TEST Core/*.*)
-add_executable(NRT.Tests.Core ${CORE_TEST})
-target_link_libraries(NRT.Tests.Core NRT.Core gtest_main)
-add_test(NAME NRT.Tests.Core COMMAND NRT.Tests.Core)
+
+file(GLOB_RECURSE CRT_TEST Crt/*.*)
+add_executable(NRT.Tests.Crt ${CRT_TEST})
+target_link_libraries(NRT.Tests.Crt NRT.CRT gtest_main)
+add_test(NAME NRT.Tests.Crt COMMAND NRT.Tests.Crt)
+
+file(GLOB_RECURSE CFX_TEST Cfx/*.*)
+add_executable(NRT.Tests.Cfx ${CFX_TEST})
+target_link_libraries(NRT.Tests.Cfx NRT.CFX gtest_main)
+add_test(NAME NRT.Tests.Cfx COMMAND NRT.Tests.Cfx)
 
 file(GLOB_RECURSE CONC_TEST Conc/*.*)
 add_executable(NRT.Tests.Conc ${CONC_TEST})

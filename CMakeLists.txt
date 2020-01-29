@@ -5,7 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(Build/Configure.cmake)
 
-add_subdirectory(Core)
+add_subdirectory(Crt)
+add_subdirectory(Cfx)
 
 if (NRT_BUILD_ALL OR NRT_BUILD_CONC)
     add_subdirectory(Conc)
@@ -37,5 +38,5 @@ if (NRT_BUILD_ALL)
     add_executable(NRT ${SOURCE})
     target_enable_ipo(NRT)
     target_include_directories(NRT PRIVATE Source)
-    target_link_libraries(NRT PRIVATE NRT.Core NRT.Conc)
+    target_link_libraries(NRT PRIVATE NRT.CFX NRT.Conc)
 endif()

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include "Conc/Async.h"
-#include "Core/Threading/Micro/Timer.h"
+#include "Cfx/Threading/Micro/Timer.h"
 
 void PrintTimePoint(const std::chrono::system_clock::time_point& now, const char* message) {
 	std::cout << "    "

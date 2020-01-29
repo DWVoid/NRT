@@ -1,7 +1,7 @@
 #include <iostream>
 #include <chrono>
-#include "Core/Utilities/TempAlloc.h"
-#include "Core/Threading/Micro/Timer.h"
+#include "Cfx/Utilities/TempAlloc.h"
+#include "Cfx/Threading/Micro/Timer.h"
 
 void PrintTimePoint(const std::chrono::system_clock::time_point& now, const char* message) {
 	std::cout << "    "
@@ -54,7 +54,7 @@ void TestSequenceAlloc() {
 	delete[] array;
 }
 
-#include "Core/Threading/Micro/Promise.h"
+#include "Cfx/Threading/Micro/Promise.h"
 
 class T : public IExecTask {
 public:

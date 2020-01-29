@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Config.h"
-#include "Core/Threading/Micro/Promise.h"
+#include "Cfx/Threading/Micro/Promise.h"
 
 namespace InterOp {
 	NRTCONC_API void AsyncResumePrevious() noexcept;

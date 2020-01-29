@@ -2,7 +2,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include "Msg/Tunnels.h"
-#include "Core/Threading/Micro/Promise.h"
+#include "Cfx/Threading/Micro/Promise.h"
 
 void PrintTimePoint(const std::chrono::system_clock::time_point& now, const char* message) {
 	std::cout << "    "

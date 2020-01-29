@@ -1,8 +1,10 @@
 #include "Msg/Tunnels.h"
+#if __has_include(<Windows.h>)
 #define WINVER 0x0A00
 #define _WIN32_WINNT 0x0A00
+#endif
 #include <boost/asio.hpp>
-#include "Core/Threading/SpinLock.h"
+#include "Cfx/Threading/SpinLock.h"
 
 using boost::asio::ip::tcp;
 
