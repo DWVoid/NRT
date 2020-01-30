@@ -1,5 +1,7 @@
 #include "Service.h"
 #include <unordered_map>
+#include <string_view>
+#include <algorithm>
 
 namespace {
     struct ServiceRecord {
@@ -29,10 +31,12 @@ namespace {
             const auto iter = mRegistered.find(name);
             if (iter!=mRegistered.end()) {
                 auto& x = iter->second[0];
-                auto& cls = *(x->Info->Class);
-                NEWorld::Activator::Construct(cls, x->Info->Mem);
-                x->Object = reinterpret_cast<NEWorld::Object*>(reinterpret_cast<uintptr_t>(x->Info->Mem)
-                        +cls.LayoutProperty.PmrBaseOffset);
+                if (!x->Object) {
+                    auto& cls = *(x->Info->Class);
+                    NEWorld::Activator::Construct(cls, x->Info->Mem);
+                    x->Object = reinterpret_cast<NEWorld::Object*>(reinterpret_cast<uintptr_t>(x->Info->Mem)
+                            +cls.LayoutProperty.PmrBaseOffset);
+                }
                 x->Counter.fetch_add(1);
                 return {x->Object, x.get()};
             }
@@ -55,7 +59,7 @@ namespace {
             if (iter!=mRegistered.end()) return iter->second;
             return mRegistered.insert_or_assign(info->Name, std::vector<std::unique_ptr<ServiceRecord>>{}).first->second;
         }
-        std::unordered_map<const char*, std::vector<std::unique_ptr<ServiceRecord>>> mRegistered;
+        std::unordered_map<std::string_view, std::vector<std::unique_ptr<ServiceRecord>>> mRegistered;
     };
 }
 

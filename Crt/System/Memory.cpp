@@ -27,7 +27,7 @@ namespace NEWorld::System::Memory {
                 PAGE_READWRITE));
         const auto loc = base & AlignMask ? (base & AlignRev) + BlockSize : base;
         const auto blk = new(VirtualAlloc(reinterpret_cast<LPVOID>(loc), BlockSize, MEM_COMMIT, PAGE_READWRITE)) Block;
-        const auto kp = reinterpret_cast<HouseKeep*>(blk.Reserved);
+        const auto kp = reinterpret_cast<HouseKeep*>(blk->Reserved);
         kp->ReleaseBase = base;
         return blk;
         #endif

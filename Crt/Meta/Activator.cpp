@@ -2,7 +2,7 @@
 
 namespace NEWorld {
     static void CheckAlign(void* mem, int align) {
-        if (!reinterpret_cast<uintptr_t>(mem)%align) {
+        if (!(reinterpret_cast<uintptr_t>(mem)%align)) {
             throw MemoryMissAlign();
         }
     }

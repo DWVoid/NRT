@@ -8,7 +8,7 @@ namespace NEWorld::System::Memory {
     static constexpr uintptr_t BlockSize = 4u << 20u; // 4MiB
     static constexpr uintptr_t BlockEnd = BlockSize - Amd64CpuCacheSize; // Reverse the last cache line for housekeeping
 
-    struct alignas(BlockSize) Block {
+    struct Block {
         char Data[BlockEnd];
         char Reserved[Amd64CpuCacheSize];
     };

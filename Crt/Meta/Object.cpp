@@ -1,7 +1,7 @@
 #include "Meta.h"
 
 namespace {
-    [[gnu::noinline]] const std::type_info& Id(const NEWorld::Object* object) noexcept {
+    const std::type_info& Id(const NEWorld::Object* object) noexcept {
         return typeid(*object);
     }
 }

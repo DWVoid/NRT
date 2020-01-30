@@ -8,6 +8,10 @@
 namespace {
     class TimeAgent: public NEWorld::Object {
     public:
+        TimeAgent() noexcept {
+            _Agent = std::thread([this]() noexcept { Worker(); });
+        }
+
         ~TimeAgent() override { Stop(); }
 
         void Stop() {
@@ -56,24 +60,24 @@ namespace {
         std::mutex _QueueLock;
         std::condition_variable _QueueNotify;
         std::priority_queue<DelayEntry, std::vector<DelayEntry>, Comp> _Queue;
-        std::thread _Agent = std::thread([this]() noexcept { Worker(); });
+        std::thread _Agent;
     };
 }
 
-NW_MAKE_SERVICE(TimeAgent, "org.newinfinideas.nrt.cfx.timer", 0.0, _Agent)
+NW_MAKE_SERVICE(TimeAgent, "org.newinfinideas.nrt.cfx.timer", 0.0, _S)
 
 void DelayedTask::Submit() noexcept {
     _Cancel = false;
-    _Agent.Get().Submit(this, _Milli);
+    _S.Get().Submit(this, _Milli);
 }
 
 void DelayedTask::Cancel() noexcept {
     _Cancel = true;
-    _Agent.Get().Cancel();
+    _S.Get().Cancel();
 }
 
 void CycleTask::Exec() noexcept {
-    if (_Enabled && _Agent.Get().Running()) {
+    if (_Enabled && _S.Get().Running()) {
         OnTimer();
         Submit();
     }
