@@ -8,6 +8,7 @@
 #include <utility>
 #include <memory>
 #include "Cfx/Config.h"
+#include "System/Memory.h"
 
 class Temp {
 public:
@@ -45,7 +46,6 @@ public:
     template <class T>
     struct Allocator : private std::allocator<T> {
     private:
-
         static constexpr uintptr_t Align() noexcept {
             const auto trim = sizeof(T) / alignof(T) * alignof(T);
             return trim != sizeof(T) ? trim + alignof(T) : sizeof(T);
@@ -95,6 +95,6 @@ protected:
             ->fetch_add(1);
     }
 
-    static constexpr uintptr_t Amd64CpuCacheSize = 64;
+    static constexpr uintptr_t Amd64CpuCacheSize = NEWorld::System::Memory::Amd64CpuCacheSize;
     static constexpr uintptr_t AllocThreshold = 1u << 18u;
 };

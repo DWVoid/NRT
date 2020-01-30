@@ -43,7 +43,7 @@ namespace {
                     while (std::chrono::steady_clock::now() < _Queue.top().Due && !_Queue.top().Task->IsCancelled()) {
                         _QueueNotify.wait_until(lk, _Queue.top().Due);
                     }
-                    if (auto task = _Queue.top().Task; task->IsCancelled()) { task->OnCancelled(); }
+                    if (auto task = _Queue.top().Task; task->IsCancelled()) { task->OnCancel(); }
                     else { ThreadPool::Enqueue(task); }
                     _Queue.pop();
                 }
@@ -51,6 +51,7 @@ namespace {
             }
         }
 
+        NEWorld::ServiceHandle _Pool {"org.newinfinideas.nrt.cfx.thread_pool" };
         std::atomic_bool _Stop{false};
         std::mutex _QueueLock;
         std::condition_variable _QueueNotify;

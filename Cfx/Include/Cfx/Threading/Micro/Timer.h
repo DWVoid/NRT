@@ -11,8 +11,11 @@ public:
         : DelayedTask(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()) {}
 
     NRTCORE_API void Submit() noexcept;
+
     NRTCORE_API void Cancel() noexcept;
-    virtual void OnCancelled() noexcept {}
+
+    virtual void OnCancel() noexcept {}
+
     [[nodiscard]] bool IsCancelled() const noexcept { return _Cancel; }
 private:
     explicit DelayedTask(const unsigned long long milliseconds) noexcept: _Milli(milliseconds) {}
@@ -33,7 +36,6 @@ public:
         _Enabled.store(false);
         Cancel();
     }
-
 private:
     NRTCORE_API void Exec() noexcept final;
     std::atomic_bool _Enabled{false};

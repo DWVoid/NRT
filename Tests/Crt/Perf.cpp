@@ -35,9 +35,27 @@ struct B : public NEWorld::Object {
     ~B() { std::puts("destructs"); }
 };
 
+// file 1
+class AAA :public NEWorld::Object {
+public:
+    AAA() { std::puts("construct AAA"); }
+    ~AAA() { std::puts("destructs AAA"); }
+};
+NW_MAKE_SERVICE(AAA, "example.aaa", 0.0, _AAA)
+// file 2
+class AAB :public NEWorld::Object {
+public:
+    AAB() { std::puts("construct AAB"); }
+    ~AAB() { std::puts("destructs AAB"); }
+private:
+    NEWorld::ServiceHandle dependencyAAA { "example.aaa" };
+};
+NW_MAKE_SERVICE(AAB, "example.aab", 0.0, _AAB)
+
 NW_MAKE_SERVICE(B, "AAAA", 0.0, C)
 
 TEST(NRTMETA, Service) {
     NEWorld::ServiceHandle x { "AAAA" };
-    auto& y = x.Get<B>();
+    NEWorld::ServiceHandle y { "example.aab" };
+    auto& z = x.Get<B>();
 }

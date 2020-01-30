@@ -1,11 +1,11 @@
 #include <cstddef>
+#include <vector>
+#include <future>
+#include "Service.h"
 #include "Cfx/Threading/Micro/ThreadPool.h"
 #include "Cfx/Threading/SpinLock.h"
 #include "Cfx/Threading/Semaphore.h"
-#include "../../Utilities/InterOp.h"
 #include "Cfx/Utilities/TempAlloc.h"
-#include <vector>
-#include <future>
 
 namespace {
     class SyncQueue {
@@ -77,10 +77,8 @@ namespace {
 
         void Push(IExecTask* task) noexcept {
             _Spin.Enter();
-            Utilities::InterOp::NoAsyncG0Tidy();
             _Exec.Push(reinterpret_cast<uintptr_t>(task));
             _Spin.Leave();
-            Utilities::InterOp::AsyncTidyLocalG0();
         }
 
         IExecTask* Pop() noexcept {
@@ -155,15 +153,16 @@ namespace {
 
     thread_local int _InstanceInvokeId;
 
-    class Implementation {
+    class Implementation: public NEWorld::Object {
     public:
-        explicit Implementation(int threadCount) {
+        Implementation() {
+            const int threadCount = static_cast<int>(std::thread::hardware_concurrency() - 1);
             QueueGroup::Instance().Add(_GlobalQueue);
             _Workers.reserve(threadCount);
             for (auto i = 0; i < threadCount; i++) { _Workers.emplace_back(std::make_unique<Worker>(*this)); }
         }
 
-        ~Implementation() noexcept { Utilities::InterOp::StopOnThreadPoolStop(); }
+        ~Implementation() noexcept override { Stop(); }
 
         void Stop() noexcept {
             if (_Stat.Running.exchange(false)) {
@@ -297,22 +296,18 @@ namespace {
             Queue* _Queue = new Queue();
         };
 
+        NEWorld::ServiceHandle _Alloc { "org.newinfinideas.nrt.cfx.temp_alloc.a" };
         Queue* _GlobalQueue = new Queue();
         std::vector<std::unique_ptr<Worker>> _Workers;
-    } _Impl{static_cast<int>(std::thread::hardware_concurrency() - 1)};
-}
+    };
 
-namespace Utilities::InterOp {
-    void StopOnThreadPoolStop() noexcept {
-        StopOnTimerStop();
-        _Impl.Stop();
-    }
+    NW_MAKE_SERVICE(Implementation, "org.newinfinideas.nrt.cfx.thread_pool", 0.0, _Impl)
 }
 
 bool ThreadPool::LocalEnqueue(IExecTask* task) noexcept {
     if (const auto queue = GetCurrentQueue(); queue) {
         queue->Push(task);
-        _Impl.WakeOne();
+        _Impl.Get().WakeOne();
         return true;
     }
     return false;
@@ -320,25 +315,23 @@ bool ThreadPool::LocalEnqueue(IExecTask* task) noexcept {
 
 void ThreadPool::Enqueue(IExecTask* task) noexcept {
     if (!LocalEnqueue(task)) {
-        _Impl.Global().Push(task);
-        _Impl.WakeOne();
+        _Impl.Get().Global().Push(task);
+        _Impl.Get().WakeOne();
     }
 }
 
 void ThreadPool::Spawn(AInstancedExecTask* task) noexcept {
-    const auto zero = &_Impl.Global();
+    const auto zero = &_Impl.Get().Global();
     const auto taskRaw = task;
     for (auto current = zero->Next; current != zero; current = current->Next) { current->Push(taskRaw); }
-    _Impl.WakeAll();
+    _Impl.Get().WakeAll();
 }
-
-void ThreadPool::Stop() noexcept { Utilities::InterOp::StopOnThreadPoolStop(); }
 
 void ThreadPool::Panic() noexcept {
-    _Impl.MakePanic();
-    Utilities::InterOp::StopOnThreadPoolStop();
+    _Impl.Get().MakePanic();
+    _Impl.Get().Stop();
 }
 
-int ThreadPool::CountThreads() noexcept { return _Impl.Count(); }
+int ThreadPool::CountThreads() noexcept { return _Impl.Get().Count(); }
 
 void AInstancedExecTask::Exec() noexcept { Exec(_InstanceInvokeId); }

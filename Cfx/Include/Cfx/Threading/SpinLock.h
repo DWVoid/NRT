@@ -1,7 +1,8 @@
 #pragma once
 
-#include "SpinWait.h"
 #include <atomic>
+#include "Lock.h"
+#include "SpinWait.h"
 
 class SpinLock {
 public:

@@ -14,7 +14,6 @@
 #endif
 #endif
 
-
 namespace {
 #ifndef HAS_WIN32_CLOCK
     constexpr int tccSecondsToNanoSeconds = 1000000000;
