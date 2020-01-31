@@ -6,9 +6,9 @@ namespace NEWorld {
     class ServiceInfo : public ClassAttribute {
     public:
         constexpr ServiceInfo(const char* name, const double priority, void* mem) noexcept
-                :Name(name), Priority(priority), Mem(mem) { }
-        ~ServiceInfo() noexcept;
-        void OnRuntimeAttach() noexcept override;
+                :Mem(mem), Name(name), Priority(priority) { }
+        NRTCRT_API ~ServiceInfo() noexcept;
+        NRTCRT_API void OnRuntimeAttach() noexcept override;
         void* const Mem;
         const char* const Name;
         const double Priority = 0.0;
@@ -32,4 +32,4 @@ namespace NEWorld {
 }
 
 #define NW_MAKE_SERVICE(T, URI, PRI, VAR) \
-    ::NEWorld::ServiceLocation<T> VAR; NW_META_CLASS_ATTRIBUTE(T, ::NEWorld::ServiceInfo, URI, PRI, &VAR)
+    ::NEWorld::ServiceLocation<T> VAR; NW_META_CLASS_ATTRIBUTE(T, ::NEWorld::ServiceInfo, URI, PRI, &(VAR))

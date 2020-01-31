@@ -28,6 +28,6 @@ namespace NEWorld::InterOp {
         DyldExec mExec;
     };
 }
-#define NW_DY_LD_EXEC(x) namespace { ::NEWorld::InterOp::DyldExecutor NW_UNIQUE_NAME##C { (x) }; }
-#define NW_DY_UD_EXEC(x) namespace { ::NEWorld::InterOp::DyUdExecutor NW_UNIQUE_NAME##D { (x) }; }
+#define NW_DY_LD_EXEC(x) namespace { ::NEWorld::InterOp::DyldExecutor NW_CONCAT_2(NW_UNIQUE_NAME, C) { (x) }; }
+#define NW_DY_UD_EXEC(x) namespace { ::NEWorld::InterOp::DyUdExecutorNW_CONCAT_2(NW_UNIQUE_NAME, D) { (x) }; }
 #endif

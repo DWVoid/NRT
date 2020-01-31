@@ -1,7 +1,7 @@
 #include "Cfx/Utilities/Timings.h"
 
 #if __has_include(<Windows.h>)
-#include "Cfx/Utilities/System/WindowsLess.h"
+#include "System/Local/WindowsLess.h"
 #define HAS_WIN32_CLOCK 1
 #elif __has_include(<mach/mach_time.h>)
 #define HAVE_MACH_ABSOLUTE_TIME 1

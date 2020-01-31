@@ -32,7 +32,7 @@ private:
 };
 
 #elif __has_include(<Windows.h>)
-#include "Cfx/Utilities/System/WindowsLess.h"
+#include "System/Local/WindowsLess.h"
 
 class Semaphore {
 public:

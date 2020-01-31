@@ -37,7 +37,7 @@ namespace NEWorld::System::Memory {
 #ifdef SYSTEM_POSIX
         free(blk);
 #elif defined(SYSTEM_WINDOWS)
-        VirtualFree(reinterpret_cast<LPVOID>(reinterpret_cast<HouseKeep*>(blk.Reserved)->ReleaseBase), 0, MEM_RELEASE);
+        VirtualFree(reinterpret_cast<LPVOID>(reinterpret_cast<HouseKeep*>(blk->Reserved)->ReleaseBase), 0, MEM_RELEASE);
 #endif
     }
 

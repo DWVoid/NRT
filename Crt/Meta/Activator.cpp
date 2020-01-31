@@ -2,7 +2,7 @@
 
 namespace NEWorld {
     static void CheckAlign(void* mem, int align) {
-        if (!(reinterpret_cast<uintptr_t>(mem)%align)) {
+        if (reinterpret_cast<uintptr_t>(mem)%align) {
             throw MemoryMissAlign();
         }
     }
@@ -82,8 +82,9 @@ namespace NEWorld {
         case Type::NotMovable: return "Activator Error: Class Not Movable";
         case Type::NotAnObject: return "Activator Error: Class Info Not Refer To An NEWorld Object";
         }
+        return nullptr;
     }
-    
+
     Object* Activator::New(const ClassReflect& ref) {
         if (ref.LayoutProperty.PmrBaseOffset==-1) {
             throw ActivatorError(ActivatorError::Type::NotAnObject);

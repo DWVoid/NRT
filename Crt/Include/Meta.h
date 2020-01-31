@@ -135,7 +135,7 @@ namespace NEWorld {
     public:
         explicit ClassNotConvertible(Object* object) noexcept
                 :mObject(object) { }
-        [[nodiscard]] const char* what() const noexcept override;
+        [[nodiscard]] NRTCRT_API const char* what() const noexcept override;
     private:
         Object* mObject;
     };
@@ -177,7 +177,7 @@ namespace NEWorld {
 
     class MemoryMissAlign : public std::exception {
     public:
-        [[nodiscard]] const char* what() const noexcept override;
+        [[nodiscard]] NRTCRT_API const char* what() const noexcept override;
     };
 
     class ActivatorError : public std::exception {
@@ -187,7 +187,7 @@ namespace NEWorld {
             NotDestructible, NotCopyable, NotMovable, NotAnObject
         };
         explicit ActivatorError(Type type) noexcept;
-        [[nodiscard]] const char* what() const noexcept override;
+        [[nodiscard]] NRTCRT_API const char* what() const noexcept override;
     private:
         Type mType;
     };
