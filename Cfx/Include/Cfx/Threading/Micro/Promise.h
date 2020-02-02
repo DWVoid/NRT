@@ -447,6 +447,7 @@ namespace InterOp {
 
         FutureBase& operator=(FutureBase&& other) noexcept {
             if (this != std::addressof(other)) {
+                ReleaseState();
                 _State = other._State;
                 other._State = nullptr;
             }
@@ -522,6 +523,7 @@ namespace InterOp {
 
         PromiseBase& operator=(PromiseBase&& other) noexcept {
             if (this != std::addressof(other)) {
+                ReleaseState();
                 _State = other._State;
                 other._State = nullptr;
             }
@@ -533,11 +535,7 @@ namespace InterOp {
         PromiseBase& operator=(const PromiseBase&) = delete;
 
         ~PromiseBase() noexcept {
-            if (_State) {
-                if (!_State->Satisfied())
-                    SetExceptionUnsafe(std::make_exception_ptr(FutureError(FutureErrorCode::BrokenPromise)));
-                _State->Release();
-            }
+            ReleaseState();
         }
 
         Future<T> GetFuture() { return Future<T>(_State); }
@@ -553,6 +551,14 @@ namespace InterOp {
 
         SharedAssociatedState<T>* _State = MakeState();
     private:
+        void ReleaseState() noexcept {
+            if (_State) {
+                if (!_State->Satisfied())
+                    SetExceptionUnsafe(std::make_exception_ptr(FutureError(FutureErrorCode::BrokenPromise)));
+                _State->Release();
+            }
+        }
+
         static SharedAssociatedState<T>* MakeState() {
             auto _ = Temp::New<SharedAssociatedState<T>>();
             _->Acquire();

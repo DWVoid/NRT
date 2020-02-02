@@ -24,7 +24,7 @@ struct IEndPointTcp {
 	IEndPointTcp& operator=(IEndPointTcp&&) = delete;
 	IEndPointTcp& operator=(const IEndPointTcp&) = delete;
 	virtual ~IEndPointTcp() noexcept = default;
-	virtual Future<void> Send(uint32_t type, uint32_t length, std::byte* content) = 0;
+	virtual Future<void> Send(uint32_t type, uint32_t length, const std::byte* content) = 0;
 	virtual Future<OutMessage> Wait() = 0;
 	virtual Future<void> Stop() = 0;
 	NRTMSG_API static std::unique_ptr<IEndPointTcp> Create(std::string_view address, int port);

@@ -38,18 +38,18 @@ namespace {
 
 		TcpMessageHeader(uint32_t type, uint32_t length) noexcept
 			: Data{
-				static_cast<std::byte>(type >> 24), static_cast<std::byte>(type >> 16),
-				static_cast<std::byte>(type >> 8), static_cast<std::byte>(type),
-				static_cast<std::byte>(length >> 24), static_cast<std::byte>(length >> 16),
-				static_cast<std::byte>(length >> 8), static_cast<std::byte>(length),
+				static_cast<std::byte>(type >> 24u), static_cast<std::byte>(type >> 16u),
+				static_cast<std::byte>(type >> 8u), static_cast<std::byte>(type),
+				static_cast<std::byte>(length >> 24u), static_cast<std::byte>(length >> 16u),
+				static_cast<std::byte>(length >> 8u), static_cast<std::byte>(length),
 			} {}
 
 		[[nodiscard]] uint32_t Type() const noexcept {
-			return uint32_t(Data[0]) << 24 | uint32_t(Data[1]) << 16 | uint32_t(Data[2]) << 8 | uint32_t(Data[3]);
+			return uint32_t(Data[0]) << 24u | uint32_t(Data[1]) << 16u | uint32_t(Data[2]) << 8u | uint32_t(Data[3]);
 		}
 
 		[[nodiscard]] uint32_t Length() const noexcept {
-			return uint32_t(Data[4]) << 24 | uint32_t(Data[5]) << 16 | uint32_t(Data[6]) << 8 | uint32_t(Data[7]);
+			return uint32_t(Data[4]) << 24u | uint32_t(Data[5]) << 16u | uint32_t(Data[6]) << 8u | uint32_t(Data[7]);
 		}
 
 		std::byte Data[8];
@@ -66,7 +66,7 @@ namespace {
 
 		tcp::socket& Socket() noexcept { return _Socket; }
 
-		Future<void> Send(uint32_t type, uint32_t length, std::byte* content) override {
+		Future<void> Send(uint32_t type, uint32_t length, const std::byte* content) override {
 			auto stm = Temp::New<SendStateMachine>(type, length, content, this);
 			return stm->Start();
 		}
@@ -92,7 +92,9 @@ namespace {
 			void MoveNext(const uint32_t step) noexcept {
 				switch (step) {
 				case 0:
-					This->ReadAsync(8, Head.Data).Then([this](auto&& f) noexcept { MoveNext((f.Get() ? -1 : 1)); });
+					This->ReadAsync(8, Head.Data).Then([this](auto&& f) noexcept {
+					    MoveNext((f.Get() ? -1 : 1));
+					});
 					return;
 				case 1:
 					Out.Type = Head.Type();
@@ -124,7 +126,7 @@ namespace {
 		};
 
 		struct SendStateMachine {
-			SendStateMachine(const uint32_t type, const uint32_t length, std::byte* content,
+			SendStateMachine(const uint32_t type, const uint32_t length, const std::byte* content,
 			                 TcpConnection* _this) noexcept
 				: Head(type, length), This(_this), Content(content), Length(length) {}
 
@@ -165,11 +167,11 @@ namespace {
 			Promise<void> Complete{};
 			TcpMessageHeader Head;
 			TcpConnection* This;
-			std::byte* Content;
+			const std::byte* Content;
 			uint32_t Length;
 		};
 
-		Future<boost::system::error_code> WriteAsync(uint32_t length, std::byte* content) noexcept {
+		Future<boost::system::error_code> WriteAsync(uint32_t length, const std::byte* content) noexcept {
 			Promise<boost::system::error_code> complete{};
 			auto fut = complete.GetFuture();
 			async_write(_Socket, boost::asio::const_buffer{content, length},
