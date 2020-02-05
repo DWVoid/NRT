@@ -40,18 +40,18 @@ public:
 class AAsyncContinuationExecTask : public IExecTask {
 public:
     void DoScheduleContinuation() noexcept {
-        if (_Flag == ContinuationFlag::ExecOnCompletionInvocation) { this->Exec(); }
+        if (_Flag==ContinuationFlag::ExecOnCompletionInvocation) { this->Exec(); }
         else { DoAsyncDispatchContinuation(); }
     }
 
     void DoScheduleContinuationAsPromiseAlreadyFulfilled() noexcept {
-        if (_Flag == ContinuationFlag::ForceAsyncInvocation) { DoAsyncDispatchContinuation(); }
+        if (_Flag==ContinuationFlag::ForceAsyncInvocation) { DoAsyncDispatchContinuation(); }
         else { this->Exec(); }
     }
 
     void Setup(const ContinuationFlag flag, AsyncContinuationContext* context) noexcept {
         SetFlag(flag);
-        if (flag != ContinuationFlag::ExecOnCompletionInvocation) {
+        if (flag!=ContinuationFlag::ExecOnCompletionInvocation) {
             if (context) { SetContext(context); }
             else { Capture(); }
         }
@@ -86,11 +86,11 @@ namespace InterOp {
         mutable std::atomic<uintptr_t> _Lock{0};
 
         // state control
-        enum LockFlags {
-            SpinBit = 0b1,
-            WriteBit = 0b10,
-            ReadyBit = 0b100,
-            PmrBitRev = 0b111
+        enum LockFlags : uintptr_t {
+            SpinBit = 0b1u,
+            WriteBit = 0b10u,
+            ReadyBit = 0b100u,
+            PmrBitRev = 0b111u
         };
 
         struct SyncPmrData {
@@ -133,7 +133,7 @@ namespace InterOp {
             size_t iter = 0;
             for (;;) {
                 while (CheckSpinLock())
-                    if (++iter < 100)
+                    if (++iter<100)
                         IDLE;
                     else std::this_thread::yield();
                 auto _ = _Lock.load();
@@ -163,7 +163,7 @@ namespace InterOp {
             DoScheduleContinuation();
         }
 
-        void PrepareWriteUnsafe() const noexcept { (void)this; }
+        void PrepareWriteUnsafe() const noexcept { (void) this; }
 
         void CompleteWriteUnsafe() noexcept {
             _Lock.fetch_or(ReadyBit | WriteBit);
@@ -187,7 +187,7 @@ namespace InterOp {
             if (!IsReady()) {
                 auto _ = PrepareWait();
                 std::unique_lock<std::mutex> lk(_->Mutex);
-                while (!IsReady() && Clock::now() < absTime)
+                while (!IsReady() && Clock::now()<absTime)
                     _->Cv.wait_until(lk, absTime);
             }
             return IsReady();
@@ -195,7 +195,7 @@ namespace InterOp {
 
         template <class Rep, class Period>
         bool WaitFor(const std::chrono::duration<Rep, Period>& relTime) const {
-            return WaitUntil(std::chrono::steady_clock::now() + relTime);
+            return WaitUntil(std::chrono::steady_clock::now()+relTime);
         }
 
         bool IsReady() const noexcept { return CheckNotExpiredReadyBit(); }
@@ -204,7 +204,9 @@ namespace InterOp {
 
         bool CheckReadyBit() const noexcept { return static_cast<bool>(_Lock.load() & ReadyBit); }
 
-        bool CheckNotExpiredReadyBit() const noexcept { return CheckReadyBit() && CheckWriteBit(); }
+        bool CheckNotExpiredReadyBit() const noexcept {
+            return static_cast<bool>(_Lock.load() & (WriteBit | ReadyBit));
+        }
 
         void MakeExpire() const noexcept { _Lock.fetch_and(~uintptr_t(WriteBit)); }
     protected:
@@ -223,11 +225,11 @@ namespace InterOp {
 
     public:
         bool Satisfied() const noexcept { return CheckReadyBit(); }
-        bool Valid() const noexcept { return CheckNotExpiredReadyBit() && _Continuation == nullptr; }
+        bool Valid() const noexcept { return CheckNotExpiredReadyBit() && _Continuation==nullptr; }
         // Continuable
     public:
         void SetContinuation(AAsyncContinuationExecTask* _task) noexcept {
-            if (_Continuation.exchange(_task) == reinterpret_cast<AAsyncContinuationExecTask*>(uintptr_t(~0u))) {
+            if (_Continuation.exchange(_task)==reinterpret_cast<AAsyncContinuationExecTask*>(uintptr_t(~0u))) {
                 DoScheduleContinuationAsPromiseAlreadyFulfilled();
             }
         }
@@ -273,7 +275,7 @@ namespace InterOp {
 
         void Acquire() const noexcept { _RefCount.fetch_add(1); }
 
-        void Release() const noexcept { if (_RefCount.fetch_sub(1) == 1) Temp::Delete(this); }
+        void Release() const noexcept { if (_RefCount.fetch_sub(1)==1) Temp::Delete(this); }
     };
 
     template <class T>
@@ -386,7 +388,7 @@ namespace InterOp {
         using ReturnType = std::invoke_result_t<std::decay_t<Callable>, std::decay_t<Ts>...>;
     public:
         explicit DeferredCallable(Callable&& call, Ts&& ... args)
-            : _Function(std::forward<Callable>(call)), _Arguments(std::forward<Ts>(args)...) { }
+                :_Function(std::forward<Callable>(call)), _Arguments(std::forward<Ts>(args)...) { }
 
         auto Invoke() { return Apply(std::make_index_sequence<std::tuple_size<decltype(_Arguments)>::value>()); }
     private:
@@ -400,7 +402,7 @@ namespace InterOp {
         using ReturnType = std::invoke_result_t<std::decay_t<Callable>>;
 
         explicit DeferredCallable(Callable&& call)
-            : _Function(std::forward<Callable>(call)) { }
+                :_Function(std::forward<Callable>(call)) { }
 
         auto Invoke() { return _Function(); }
     private:
@@ -413,7 +415,7 @@ namespace InterOp {
         using ReturnType = typename DeferredCallable<Callable, Ts...>::ReturnType;
 
         explicit DeferredProcedureCallTask(Callable&& call, Ts&& ... args)
-            : DeferredCallable<Callable, Ts...>(std::forward<Callable>(call), std::forward<Ts>(args)...) { }
+                :DeferredCallable<Callable, Ts...>(std::forward<Callable>(call), std::forward<Ts>(args)...) { }
 
         void Exec() noexcept override {
             try {
@@ -437,16 +439,16 @@ namespace InterOp {
     class FutureBase {
     protected:
         explicit FutureBase(SharedAssociatedState<T>* _) noexcept
-            : _State(_) { _State->Acquire(); }
+                :_State(_) { _State->Acquire(); }
 
     public:
         FutureBase() = default;
 
         FutureBase(FutureBase&& other) noexcept
-            : _State(other._State) { other._State = nullptr; }
+                :_State(other._State) { other._State = nullptr; }
 
         FutureBase& operator=(FutureBase&& other) noexcept {
-            if (this != std::addressof(other)) {
+            if (this!=std::addressof(other)) {
                 ReleaseState();
                 _State = other._State;
                 other._State = nullptr;
@@ -476,10 +478,10 @@ namespace InterOp {
 
         template <class Func>
         auto Then(Func fn, ContinuationFlag flag = ContinuationFlag::ExecOnCompletionInvocation,
-                  AsyncContinuationContext* context = nullptr) {
+                AsyncContinuationContext* context = nullptr) {
             auto task = Temp::New<DeferredProcedureCallTask<std::decay_t<Func>, Future<T>>>(
-                std::forward<std::decay_t<Func>>(std::move(fn)),
-                Future(nullptr, _State)
+                    std::forward<std::decay_t<Func>>(std::move(fn)),
+                    Future(nullptr, _State)
             );
             task->Setup(flag, context);
             auto future = task->GetFuture();
@@ -488,6 +490,9 @@ namespace InterOp {
             return future;
         }
 
+        void Drop(SharedAssociatedState<T>* const st) noexcept {
+            if (st == _State) { ReleaseState(); }
+        }
     protected:
         void ReleaseState() noexcept {
             if (_State) {
@@ -498,7 +503,7 @@ namespace InterOp {
 
         struct ReleaseRAII {
             explicit ReleaseRAII(FutureBase* _) noexcept
-                : _This(_) { }
+                    :_This(_) { }
 
             ReleaseRAII(const ReleaseRAII&) = delete;
             ReleaseRAII& operator=(const ReleaseRAII&) = delete;
@@ -519,10 +524,10 @@ namespace InterOp {
         PromiseBase() = default;
 
         PromiseBase(PromiseBase&& other) noexcept
-            : _State(other._State) { other._State = nullptr; }
+                :_State(other._State) { other._State = nullptr; }
 
         PromiseBase& operator=(PromiseBase&& other) noexcept {
-            if (this != std::addressof(other)) {
+            if (this!=std::addressof(other)) {
                 ReleaseState();
                 _State = other._State;
                 other._State = nullptr;
@@ -537,6 +542,8 @@ namespace InterOp {
         ~PromiseBase() noexcept {
             ReleaseState();
         }
+
+        void Drop(Future<T>& fut) { fut.Drop(_State); }
 
         Future<T> GetFuture() { return Future<T>(_State); }
 
@@ -573,10 +580,10 @@ class Future : public InterOp::FutureBase<T> {
     friend class InterOp::FutureBase<T>;
 
     explicit Future(InterOp::SharedAssociatedState<T>* _) noexcept
-        : InterOp::FutureBase<T>(_) { }
+            :InterOp::FutureBase<T>(_) { }
 
     Future(std::nullptr_t,
-           InterOp::SharedAssociatedState<T>* _) noexcept { InterOp::FutureBase<T>::_State = _; }
+            InterOp::SharedAssociatedState<T>* _) noexcept { InterOp::FutureBase<T>::_State = _; }
 
 public:
     Future() noexcept = default;
@@ -593,10 +600,10 @@ class Future<T&> : public InterOp::FutureBase<T&> {
     friend class InterOp::FutureBase<T&>;
 
     explicit Future(InterOp::SharedAssociatedState<T&>* _) noexcept
-        : InterOp::FutureBase<T&>(_) { }
+            :InterOp::FutureBase<T&>(_) { }
 
     Future(std::nullptr_t,
-           InterOp::SharedAssociatedState<T&>* _) noexcept { InterOp::FutureBase<T&>::template _State = _; }
+            InterOp::SharedAssociatedState<T&>* _) noexcept { InterOp::FutureBase<T&>::template _State = _; }
 
 public:
     Future() noexcept = default;
@@ -613,7 +620,7 @@ class Future<void> : public InterOp::FutureBase<void> {
     friend class InterOp::FutureBase<void>;
 
     explicit Future(InterOp::SharedAssociatedState<void>* _) noexcept
-        : FutureBase<void>(_) { }
+            :FutureBase<void>(_) { }
 
     Future(std::nullptr_t, InterOp::SharedAssociatedState<void>* _) noexcept { _State = _; }
 public:

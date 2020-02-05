@@ -17,5 +17,5 @@ add_test(NAME NRT.Tests.Conc COMMAND NRT.Tests.Conc)
 
 file(GLOB_RECURSE MSG_TEST Msg/*.*)
 add_executable(NRT.Tests.Msg ${MSG_TEST})
-target_link_libraries(NRT.Tests.Msg NRT.Msg gtest_main)
+target_link_libraries(NRT.Tests.Msg NRT.Msg NRT.Conc gtest_main)
 add_test(NAME NRT.Tests.Msg COMMAND NRT.Tests.Msg)

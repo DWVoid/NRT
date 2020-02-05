@@ -5,8 +5,7 @@ namespace {
     class AsyncExecutor : public IExecTask {
     public:
         explicit AsyncExecutor(IExecTask* inner)
-                :
-                _Current(boost::context::fiber([this, inner](boost::context::fiber&& sink) mutable noexcept {
+                :_Current(boost::context::fiber([this, inner](boost::context::fiber&& sink) mutable noexcept {
                     _Sink = std::move(sink);
                     inner->Exec();
                     return std::move(_Sink);
