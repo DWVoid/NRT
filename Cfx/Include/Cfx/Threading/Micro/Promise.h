@@ -491,7 +491,7 @@ namespace InterOp {
         }
 
         void Drop(SharedAssociatedState<T>* const st) noexcept {
-            if (st == _State) { ReleaseState(); }
+            if (st==_State) { ReleaseState(); }
         }
     protected:
         void ReleaseState() noexcept {
@@ -539,9 +539,7 @@ namespace InterOp {
 
         PromiseBase& operator=(const PromiseBase&) = delete;
 
-        ~PromiseBase() noexcept {
-            ReleaseState();
-        }
+        ~PromiseBase() noexcept { ReleaseState(); }
 
         void Drop(Future<T>& fut) { fut.Drop(_State); }
 
@@ -563,6 +561,7 @@ namespace InterOp {
                 if (!_State->Satisfied())
                     SetExceptionUnsafe(std::make_exception_ptr(FutureError(FutureErrorCode::BrokenPromise)));
                 _State->Release();
+                _State = nullptr;
             }
         }
 

@@ -1,9 +1,11 @@
+#include <limits>
 #include "Msg/Tunnels.h"
 #if __has_include(<Windows.h>)
 #define WINVER 0x0A00
 #define _WIN32_WINNT 0x0A00
 #endif
 #include <boost/asio.hpp>
+#include <iostream>
 #include "Cfx/Threading/SpinLock.h"
 
 using boost::asio::ip::tcp;
@@ -79,7 +81,8 @@ namespace {
         auto& Native() noexcept { return _Socket; }
 
         void Shutdown() {
-            _Socket.shutdown(boost::asio::socket_base::shutdown_both);
+            boost::system::error_code ec {};
+            _Socket.shutdown(boost::asio::socket_base::shutdown_both, ec);
         }
     private:
         IoService _Srv{};
@@ -90,13 +93,18 @@ namespace {
     public:
         explicit TcpConnection(boost::asio::io_service& io_service): TcpIo(io_service) {}
 
+        ~TcpConnection() noexcept override {
+            WaitStop().Wait();
+            Shutdown();
+        }
+
         static auto Create(boost::asio::io_context& context) { return std::make_unique<TcpConnection>(context); }
 
         tcp::socket& Socket() noexcept { return Native(); }
 
         Future<void> Send(InMessage& msg) override {
-            auto stm = Temp::New<SendStateMachine>();
-            return stm->Start(msg, this);
+            auto stm = Temp::New<SendStateMachine>(msg, this);
+            return stm->Start();
         }
 
         Future<OutMessage> Wait() override {
@@ -106,16 +114,39 @@ namespace {
 
         Future<void> Stop() override {
             Shutdown();
-            _Lock.Enter();
-            auto last = std::move(Order);
-            _Lock.Leave();
-            return last;
+            return WaitStop();
+        }
+    private:
+        struct SendStateMachine;
+
+        struct StopStruct {
+            void Complete() noexcept {
+                if (Last) {
+                    Temp::Delete(Last);
+                }
+                Wait.SetValueUnsafe();
+                Temp::Delete(this);
+            }
+            SendStateMachine* Last {nullptr};
+            Promise<void> Wait {};
+        };
+
+        Future<void> WaitStop() noexcept {
+            auto* stop = Temp::New<StopStruct>();
+            auto fut = stop->Wait.GetFuture();
+            const auto last = TailingState.exchange(reinterpret_cast<SendStateMachine*>(stop)); // NOLINT
+            if (last) {
+                stop->Last = last;
+                const auto v = last->Next.exchange(1);
+                if (v == std::numeric_limits<uintptr_t>::max()) { stop->Complete(); }
+            }
+            else { stop->Complete(); }
+            return fut;
         }
 
-    private:
         struct WaitStateMachine {
             explicit WaitStateMachine(TcpConnection* _this) noexcept
-                    :This(_this) { }
+                    :This(_this) {}
 
             void MoveNext(const uint32_t step) noexcept {
                 switch (step) {
@@ -140,8 +171,9 @@ namespace {
             }
 
             Future<OutMessage> Start() noexcept {
+                auto fut = Complete.GetFuture();
                 MoveNext(0);
-                return Complete.GetFuture();
+                return fut;
             }
 
             Promise<OutMessage> Complete{};
@@ -151,42 +183,80 @@ namespace {
         };
 
         struct SendStateMachine {
-            Future<void> Start(InMessage& msg, TcpConnection* _this) noexcept {
-                auto fut = OrderRegulator.GetFuture();
-                _this->_Lock.Enter();
-                std::swap(_this->Order, fut);
-                _this->_Lock.Leave();
-                if (!fut.HasState() || fut.IsReady()) {
-                    StepSend(_this, &msg);
-                }
+            SendStateMachine(InMessage& msg, TcpConnection* ths) noexcept: This(ths), Message(msg) {}
+
+            Future<void> Start() noexcept {
+                const auto last = This->TailingState.exchange(this, std::memory_order_relaxed);
+                auto fut = Complete.GetFuture();
+                if (!last) { StepSend(); }
                 else {
-                    fut.Then([this, m = &msg, _this](auto&& f) noexcept { StepSend(_this, m); });
+                    Last = last;
+                    const auto v = last->Next.exchange(reinterpret_cast<uintptr_t>(this), std::memory_order_relaxed);
+                    if (v == std::numeric_limits<uintptr_t>::max()) { StepSend(); }
                 }
-                return Complete.GetFuture();
+                return fut;
             }
         private:
-            void StepSend(TcpConnection* ths, InMessage* msg) noexcept {
-                ths->WriteAsync(msg->Length(), msg->GetSend())
+            void StepSendCon() noexcept {
+                Temp::Delete(Last);
+                StepSend();
+            }
+
+            void StepCompleteCon(bool const fail) noexcept {
+                Temp::Delete(Last);
+                StepComplete(fail);
+            }
+
+            void StepSend() noexcept {
+                This->WriteAsync(Message.Length(), Message.GetSend())
                         .Then([this](auto&& f) noexcept { StepComplete(bool(f.Get())); });
             }
 
             void StepComplete(bool const fail) noexcept {
-                OrderRegulator.SetValueUnsafe();
+                auto expect = this;
+                auto recover = This->TailingState.compare_exchange_strong(expect, nullptr, std::memory_order_relaxed);
+                if (recover) {
+                    if (!fail) {
+                        Complete.SetValueUnsafe();
+                    }
+                    else {
+                        Complete.SetExceptionUnsafe(CreateAbortedIo());
+                    }
+                    Temp::Delete(this);
+                }
+                else {
+                    StepCompleteWithCont(fail);
+                }
+            }
+
+            void StepCompleteWithCont(bool const fail) {
+                const auto cont = Next.exchange(std::numeric_limits<uintptr_t>::max(), std::memory_order_relaxed);
                 if (!fail) {
                     Complete.SetValueUnsafe();
+                    if (cont > 1) { reinterpret_cast<SendStateMachine*>(cont)->StepSendCon(); }
                 }
                 else {
                     Complete.SetExceptionUnsafe(CreateAbortedIo());
+                    if (cont > 1) { reinterpret_cast<SendStateMachine*>(cont)->StepCompleteCon(true); }
                 }
-                Temp::Delete(this);
+                if (cont == 1) {
+                    auto stop = reinterpret_cast<StopStruct*>(This->TailingState.load());
+                    stop->Complete();
+                }
+                else {
+                    Temp::Delete(this);
+                }
             }
 
-            Promise<void> OrderRegulator{};
             Promise<void> Complete{};
+            TcpConnection* This;
+            InMessage& Message;
+            SendStateMachine* Last { nullptr };
+        public:
+            std::atomic<uintptr_t> Next { 0 };
         };
 
-        SpinLock _Lock;
-        Future<void> Order;
+        std::atomic<SendStateMachine*> TailingState { nullptr };
     };
 
     class TcpHost : public IHostTcp {

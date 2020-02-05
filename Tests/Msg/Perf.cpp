@@ -26,14 +26,12 @@ TEST(NrtMsgCorr, TcpCommunicate) {
         auto client = IEndPointTcp::Create("127.0.0.1", 31111);
         for (int i = 0; i < 1000000; ++i) {
             auto res = client->Wait().Get();
-            //Hint("r:", i);
         }
     });
 	auto y = std::thread([&]() {
         auto endpoint = srv->ExpectClient().Get();
         for (int i = 0; i<1000000; ++i) {
             endpoint->Send(message).Wait();
-            //Hint("s:", i);
         }
     });
     z.join();
