@@ -105,8 +105,8 @@ namespace {
         }
 
     private:
-        SpinLock _Spin;
-        SyncQueue _Exec;
+        SpinLock _Spin {};
+        SyncQueue _Exec {};
     };
 
     class QueueGroup {
@@ -156,7 +156,7 @@ namespace {
     class Implementation: public NEWorld::Object {
     public:
         Implementation() {
-            const int threadCount = static_cast<int>(std::thread::hardware_concurrency() - 1);
+            const auto threadCount = static_cast<int>(std::thread::hardware_concurrency() - 1);
             QueueGroup::Instance().Add(_GlobalQueue);
             _Workers.reserve(threadCount);
             for (auto i = 0; i < threadCount; i++) { _Workers.emplace_back(std::make_unique<Worker>(*this)); }
@@ -187,7 +187,7 @@ namespace {
 
         void WakeAll() noexcept {
             const auto c = _Park.Count.exchange(0);
-            for (int i = 0; i < c; ++i) { _Park.Signal.Signal(); }
+            for (auto i = 0; i < c; ++i) { _Park.Signal.Signal(); }
         }
 
         void MakePanic() noexcept { _Stat.Panic = true; }

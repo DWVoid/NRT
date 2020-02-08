@@ -1,11 +1,6 @@
 #include <limits>
-#include "Msg/Tunnels.h"
-#if __has_include(<Windows.h>)
-#define WINVER 0x0A00
-#define _WIN32_WINNT 0x0A00
-#endif
 #include <boost/asio.hpp>
-#include <iostream>
+#include "Msg/Tunnels.h"
 #include "Cfx/Threading/SpinLock.h"
 
 using boost::asio::ip::tcp;
@@ -81,7 +76,7 @@ namespace {
         auto& Native() noexcept { return _Socket; }
 
         void Shutdown() {
-            boost::system::error_code ec {};
+            boost::system::error_code ec{};
             _Socket.shutdown(boost::asio::socket_base::shutdown_both, ec);
         }
     private:
@@ -91,7 +86,8 @@ namespace {
 
     class TcpConnection : public IEndPointTcp, TcpIo {
     public:
-        explicit TcpConnection(boost::asio::io_service& io_service): TcpIo(io_service) {}
+        explicit TcpConnection(boost::asio::io_service& io_service)
+                :TcpIo(io_service) { }
 
         ~TcpConnection() noexcept override {
             WaitStop().Wait();
@@ -127,8 +123,8 @@ namespace {
                 Wait.SetValueUnsafe();
                 Temp::Delete(this);
             }
-            SendStateMachine* Last {nullptr};
-            Promise<void> Wait {};
+            SendStateMachine* Last{nullptr};
+            Promise<void> Wait{};
         };
 
         Future<void> WaitStop() noexcept {
@@ -138,7 +134,7 @@ namespace {
             if (last) {
                 stop->Last = last;
                 const auto v = last->Next.exchange(1);
-                if (v == std::numeric_limits<uintptr_t>::max()) { stop->Complete(); }
+                if (v==std::numeric_limits<uintptr_t>::max()) { stop->Complete(); }
             }
             else { stop->Complete(); }
             return fut;
@@ -146,12 +142,12 @@ namespace {
 
         struct WaitStateMachine {
             explicit WaitStateMachine(TcpConnection* _this) noexcept
-                    :This(_this) {}
+                    :This(_this) { }
 
             void MoveNext(const uint32_t step) noexcept {
                 switch (step) {
                 case 0:
-                    This->ReadAsync(8, Head.Data).Then([this](auto&& f) noexcept {
+                    This->ReadAsync(8, Head.Data).ContinueWith([this](auto&& f) noexcept {
                         MoveNext((f.Get() ? -1 : 1));
                     });
                     return;
@@ -159,7 +155,7 @@ namespace {
                     Out.Length = Head.Length();
                     Out.Data = decltype(Out.Data)(Temp::Allocator<std::byte>().allocate(Head.Length()),
                             {Head.Length()});
-                    This->ReadAsync(Head.Length(), Out.Data.get()).Then([this](auto&& f) noexcept {
+                    This->ReadAsync(Head.Length(), Out.Data.get()).ContinueWith([this](auto&& f) noexcept {
                         MoveNext((f.Get() ? -1 : 2));
                     });
                     return;
@@ -183,7 +179,8 @@ namespace {
         };
 
         struct SendStateMachine {
-            SendStateMachine(InMessage& msg, TcpConnection* ths) noexcept: This(ths), Message(msg) {}
+            SendStateMachine(InMessage& msg, TcpConnection* ths) noexcept
+                    :This(ths), Message(msg) { }
 
             Future<void> Start() noexcept {
                 const auto last = This->TailingState.exchange(this, std::memory_order_relaxed);
@@ -192,7 +189,7 @@ namespace {
                 else {
                     Last = last;
                     const auto v = last->Next.exchange(reinterpret_cast<uintptr_t>(this), std::memory_order_relaxed);
-                    if (v == std::numeric_limits<uintptr_t>::max()) { StepSend(); }
+                    if (v==std::numeric_limits<uintptr_t>::max()) { StepSend(); }
                 }
                 return fut;
             }
@@ -209,12 +206,12 @@ namespace {
 
             void StepSend() noexcept {
                 This->WriteAsync(Message.Length(), Message.GetSend())
-                        .Then([this](auto&& f) noexcept { StepComplete(bool(f.Get())); });
+                        .ContinueWith([this](auto&& f) noexcept { StepComplete(bool(f.Get())); });
             }
 
             void StepComplete(bool const fail) noexcept {
                 auto expect = this;
-                auto recover = This->TailingState.compare_exchange_strong(expect, nullptr, std::memory_order_relaxed);
+                const auto recover = This->TailingState.compare_exchange_strong(expect, nullptr, std::memory_order_relaxed);
                 if (recover) {
                     if (!fail) {
                         Complete.SetValueUnsafe();
@@ -233,13 +230,13 @@ namespace {
                 const auto cont = Next.exchange(std::numeric_limits<uintptr_t>::max(), std::memory_order_relaxed);
                 if (!fail) {
                     Complete.SetValueUnsafe();
-                    if (cont > 1) { reinterpret_cast<SendStateMachine*>(cont)->StepSendCon(); }
+                    if (cont>1) { reinterpret_cast<SendStateMachine*>(cont)->StepSendCon(); }
                 }
                 else {
                     Complete.SetExceptionUnsafe(CreateAbortedIo());
-                    if (cont > 1) { reinterpret_cast<SendStateMachine*>(cont)->StepCompleteCon(true); }
+                    if (cont>1) { reinterpret_cast<SendStateMachine*>(cont)->StepCompleteCon(true); }
                 }
-                if (cont == 1) {
+                if (cont==1) {
                     auto stop = reinterpret_cast<StopStruct*>(This->TailingState.load());
                     stop->Complete();
                 }
@@ -251,25 +248,25 @@ namespace {
             Promise<void> Complete{};
             TcpConnection* This;
             InMessage& Message;
-            SendStateMachine* Last { nullptr };
+            SendStateMachine* Last{nullptr};
         public:
-            std::atomic<uintptr_t> Next { 0 };
+            std::atomic<uintptr_t> Next{0};
         };
 
-        std::atomic<SendStateMachine*> TailingState { nullptr };
+        std::atomic<SendStateMachine*> TailingState{nullptr};
     };
 
     class TcpHost : public IHostTcp {
     public:
         TcpHost(boost::asio::io_context& ioService, const boost::asio::ip::address& address, const int port)
-                :acceptor_(ioService, tcp::endpoint(tcp::v4(), port)), _Context(ioService) { (void) _Srv; }
+                :_Acceptor(ioService, tcp::endpoint(tcp::v4(), port)), _Context(ioService) { (void) _Srv; }
 
         Future<std::unique_ptr<IEndPointTcp>> ExpectClient() override {
             Promise<std::unique_ptr<IEndPointTcp>> complete;
             auto fut = complete.GetFuture();
             auto newConn = TcpConnection::Create(_Context);
             auto get = newConn.get();
-            acceptor_.async_accept(get->Socket(),
+            _Acceptor.async_accept(get->Socket(),
                     [newConn = std::move(newConn), complete = std::move(complete)
                     ](auto&& error) mutable {
                         if (!error) { complete.SetValue(std::move(newConn)); }
@@ -279,7 +276,7 @@ namespace {
 
     private:
         IoService _Srv{};
-        tcp::acceptor acceptor_;
+        tcp::acceptor _Acceptor;
         boost::asio::io_context& _Context;
     };
 
@@ -288,8 +285,7 @@ namespace {
     }
 }
 
-std::unique_ptr<IEndPointTcp>
-IEndPointTcp::Create(const std::string_view address, const int port) {
+std::unique_ptr<IEndPointTcp> IEndPointTcp::Create(const std::string_view address, const int port) {
     auto ret = std::make_unique<TcpConnection>(IoService::Get());
     ret->Socket().connect({makeAddress(address), static_cast<unsigned short>(port)});
     return ret;

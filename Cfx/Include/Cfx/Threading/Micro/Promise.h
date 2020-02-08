@@ -327,7 +327,7 @@ namespace InterOp {
         }
 
     private:
-        std::aligned_storage_t<sizeof(T), alignof(T)> _Value;
+        std::aligned_storage_t<sizeof(T), alignof(T)> _Value {};
     };
 
     template <class T>
@@ -435,6 +435,23 @@ namespace InterOp {
         Promise<ReturnType> _Promise{};
     };
 
+    template <class Callable, class ...Ts>
+    class ContinuationCallTask final : public AAsyncContinuationExecTask, DeferredCallable<Callable, Ts...> {
+    public:
+        using ReturnType = typename DeferredCallable<Callable, Ts...>::ReturnType;
+
+        static_assert(std::is_same_v<ReturnType, void>, "Continuation Functions Must Return void");
+        static_assert(std::is_nothrow_invocable_v<Callable, Ts...>, "Continuation Functions Must Not Throw Exceptions");
+
+        explicit ContinuationCallTask(Callable&& call, Ts&& ... args)
+                :DeferredCallable<Callable, Ts...>(std::forward<Callable>(call), std::forward<Ts>(args)...) { }
+
+        void Exec() noexcept override {
+            DeferredCallable<Callable, Ts...>::Invoke();
+            Temp::Delete(this);
+        }
+    };
+
     template <class T>
     class FutureBase {
     protected:
@@ -470,11 +487,11 @@ namespace InterOp {
 
         void Wait() const { _State->Wait(); }
 
-        template <class _Clock, class _Duration>
-        bool WaitUntil(const std::chrono::time_point<_Clock, _Duration>& time) const { return _State->WaitUntil(time); }
+        template <class Clock, class Duration>
+        bool WaitUntil(const std::chrono::time_point<Clock, Duration>& time) const { return _State->WaitUntil(time); }
 
-        template <class _Rep, class _Period>
-        bool WaitFor(const std::chrono::duration<_Rep, _Period>& relTime) const { return _State->WaitUntil(relTime); }
+        template <class Rep, class Period>
+        bool WaitFor(const std::chrono::duration<Rep, Period>& relTime) const { return _State->WaitUntil(relTime); }
 
         template <class Func>
         auto Then(Func fn, ContinuationFlag flag = ContinuationFlag::ExecOnCompletionInvocation,
@@ -488,6 +505,18 @@ namespace InterOp {
             _State->SetContinuation(task);
             _State = nullptr;
             return future;
+        }
+
+        template <class Func>
+        void ContinueWith(Func fn, ContinuationFlag flag = ContinuationFlag::ExecOnCompletionInvocation,
+                AsyncContinuationContext* context = nullptr) {
+            const auto task = Temp::New<ContinuationCallTask<std::decay_t<Func>, Future<T>>>(
+                    std::forward<std::decay_t<Func>>(std::move(fn)),
+                    Future(nullptr, _State)
+            );
+            task->Setup(flag, context);
+            _State->SetContinuation(task);
+            _State = nullptr;
         }
 
         void Drop(SharedAssociatedState<T>* const st) noexcept {

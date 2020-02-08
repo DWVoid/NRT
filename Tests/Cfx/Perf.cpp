@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include "Cfx/Utilities/TempAlloc.h"
 #include "Cfx/Threading/Micro/Timer.h"
+#include "Service.h"
 
 void PrintTimePoint(const std::chrono::system_clock::time_point& now, const char* message) {
 	std::cout << "    "
@@ -11,6 +12,7 @@ void PrintTimePoint(const std::chrono::system_clock::time_point& now, const char
 }
 
  TEST(NrtCorePerf, SequenceAlloc250000000) {
+    NEWorld::ServiceHandle x { "org.newinfinideas.nrt.cfx.temp_alloc" };
 	const auto array = new uintptr_t[2'5000'0000ll];
 	{
 		const auto now = std::chrono::system_clock::now();
@@ -66,6 +68,8 @@ public:
 	inline static std::atomic_int cnt = 0;
 
 	void Exec() noexcept override {
+
+	    puts("1234");
 		if (cnt.fetch_add(1) == 999'9999ll) {
 			Get().SetValueUnsafe();
 			delete& Get();
@@ -80,6 +84,8 @@ void AsyncTestComplete(const Future<void>& fut, const std::chrono::system_clock:
 }
 
 TEST(NrtCorePerf, ThreadMicro10000000) {
+    NEWorld::ServiceHandle x { "org.newinfinideas.nrt.cfx.thread_pool" };
+    NEWorld::ServiceHandle y { "org.newinfinideas.nrt.cfx.temp_alloc" };
 	const auto fut = T::Get().GetFuture();
 	T test;
 	const auto now = std::chrono::system_clock::now();
