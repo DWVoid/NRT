@@ -321,9 +321,30 @@ void ThreadPool::Enqueue(IExecTask* task) noexcept {
 }
 
 void ThreadPool::Spawn(AInstancedExecTask* task) noexcept {
+    class Warp: public IExecTask {
+    public:
+        void Exec() noexcept override {
+            Task->Exec(_InstanceInvokeId);
+            if (Completes.fetch_add(1) + 1 == Threads) {
+                Task->OnComplete();
+                Temp::Delete(this);
+            }
+        }
+
+        static auto Create(AInstancedExecTask* const task) noexcept {
+            const auto w = Temp::New<Warp>();
+            w->Task = task;
+            return w;
+        }
+    private:
+        AInstancedExecTask* Task {};
+        const int Threads = _Impl.Get().Count();
+        std::atomic_int Completes { 0 };
+    };
+
     const auto zero = &_Impl.Get().Global();
-    const auto taskRaw = task;
-    for (auto current = zero->Next; current != zero; current = current->Next) { current->Push(taskRaw); }
+    const auto w = Warp::Create(task);
+    for (auto current = zero->Next; current != zero; current = current->Next) { current->Push(w); }
     _Impl.Get().WakeAll();
 }
 
@@ -333,5 +354,3 @@ void ThreadPool::Panic() noexcept {
 }
 
 int ThreadPool::CountThreads() noexcept { return _Impl.Get().Count(); }
-
-void AInstancedExecTask::Exec() noexcept { Exec(_InstanceInvokeId); }

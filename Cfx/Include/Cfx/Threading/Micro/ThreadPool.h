@@ -9,10 +9,10 @@ public:
     virtual void Exec() noexcept = 0;
 };
 
-class AInstancedExecTask : public IExecTask {
+class AInstancedExecTask : public NEWorld::Object {
 public:
-    NRTCORE_API void Exec() noexcept override;
     virtual void Exec(uint32_t instance) noexcept = 0;
+    virtual void OnComplete() noexcept = 0;
 };
 
 class ThreadPool {
@@ -21,7 +21,7 @@ public:
 
     static void Enqueue(std::unique_ptr<IExecTask> task) { Enqueue(task.release()); }
 
-    static void Spawn(std::unique_ptr<AInstancedExecTask> task) { Enqueue(task.release()); }
+    static void Spawn(std::unique_ptr<AInstancedExecTask> task) { Spawn(task.release()); }
 
     NRTCORE_API static bool LocalEnqueue(IExecTask* task) noexcept;
 
