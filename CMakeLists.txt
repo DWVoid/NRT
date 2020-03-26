@@ -7,6 +7,7 @@ include(Build/Configure.cmake)
 
 add_subdirectory(Crt)
 add_subdirectory(Cfx)
+add_subdirectory(Math)
 
 if (NRT_BUILD_ALL OR NRT_BUILD_CONC)
     add_subdirectory(Conc)
