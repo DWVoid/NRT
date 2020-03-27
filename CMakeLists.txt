@@ -5,33 +5,24 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(Build/Configure.cmake)
 
-add_subdirectory(Crt)
-add_subdirectory(Cfx)
-add_subdirectory(Math)
+nw_add_subdirectory(Crt)
+nw_add_subdirectory(Cfx)
+nw_add_subdirectory(Math)
 
 if (NRT_BUILD_ALL OR NRT_BUILD_CONC)
-    add_subdirectory(Conc)
+    nw_add_subdirectory(Conc)
 endif()
 
 if (NRT_BUILD_ALL OR NRT_BUILD_MSG)
-    add_subdirectory(Msg)
+    nw_add_subdirectory(Msg)
 endif()
 
 if (NRT_BUILD_ALL OR NRT_BUILD_OGL)
-    add_subdirectory(GL.OpenGL)
+    nw_add_subdirectory(GL.OpenGL)
 endif()
 
-# Add GTest
-if (NRT_BUILD_ALL OR NRT_BUILD_TEST)
-    include(FetchContent)
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_Declare(
-      googletest
-      GIT_REPOSITORY https://github.com/google/googletest.git
-      GIT_TAG        release-1.8.1
-    )
-    FetchContent_MakeAvailable(googletest)
-    add_subdirectory(Tests)
+if (NRT_BUILD_ALL)
+    nw_add_subdirectory(Tests)
 endif()
 
 if (NRT_BUILD_ALL)
