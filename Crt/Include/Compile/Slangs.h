@@ -14,5 +14,13 @@
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4251)
-#define _ENABLE_ATOMIC_ALIGNMENT_FIX
+#ifndef _ENABLE_ATOMIC_ALIGNMENT_FIX
+#    define _ENABLE_ATOMIC_ALIGNMENT_FIX
+#endif
+#ifndef _ENABLE_EXTENDED_ALIGNED_STORAGE
+#    define _ENABLE_EXTENDED_ALIGNED_STORAGE
+#endif
+#ifndef _CRT_SECURE_NO_WARNINGS
+#    define _CRT_SECURE_NO_WARNINGS
+#endif
 #endif
