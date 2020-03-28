@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <limits>
 #include <algorithm>
 #include <type_traits>
 
@@ -128,7 +129,7 @@ struct Vec3 {
 
     constexpr T Dot(const Vec3& r) const noexcept { return X*r.X+Y*r.Y+Z*r.Z; }
 
-    T Length() const noexcept { return std::sqrt(LengthSquared()); }
+    T Length() const noexcept { return T(std::sqrt(LengthSquared())); }
 
     void Normalize() noexcept { (*this) /= Length(); }
 };
@@ -179,3 +180,29 @@ using Long3 = Vec3<int64_t>;
 using ULong3 = Vec3<uint64_t>;
 using Float3 = Vec3<float>;
 using Double3 = Vec3<double>;
+
+namespace std {
+    template <class T>
+    struct hash<Vec3<T>> {
+        using argument_type = Vec3<T>;
+        using result_type = std::size_t;
+
+        result_type operator()(argument_type const& s) const noexcept {
+            const auto floatCnv = [](const double a) noexcept {
+                static_assert(std::numeric_limits<double>::is_iec559);
+                return *reinterpret_cast<const uint64_t*>(&a);
+            };
+            const auto hashOne = [floatCnv](const T a) noexcept {
+                size_t x;
+                if constexpr (std::is_integral_v<T>) x = a; else x = floatCnv(a);
+                x = (x) & 0xFFFF00000000FFFFu;
+                x = (x | (x << 16u)) & 0x00FF0000FF0000FFu;
+                x = (x | (x << 8u)) & 0xF00F00F00F00F00Fu;
+                x = (x | (x << 4u)) & 0x30C30C30C30C30C3u;
+                x = (x | (x << 2u)) & 0x9249249249249249u;
+                return x;
+            };
+            return hashOne(s.X) | (hashOne(s.Y) << 1u) | (hashOne(s.Z) << 2u);
+        }
+    };
+}
