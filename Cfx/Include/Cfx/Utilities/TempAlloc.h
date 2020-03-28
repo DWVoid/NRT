@@ -44,7 +44,7 @@ public:
     }
 
     template <class T>
-    struct Allocator : private std::allocator<T> {
+    struct Allocator {
     private:
         static constexpr uintptr_t Align() noexcept {
             const auto trim = sizeof(T) / alignof(T) * alignof(T);
@@ -54,6 +54,7 @@ public:
         // Helper Const
         static constexpr uintptr_t Alignment = alignof(T);
         static constexpr uintptr_t AlignedSize = Align();
+        std::allocator<T> mInner {};
     public:
         using value_type = T;
         using size_type = std::size_t;
@@ -66,12 +67,16 @@ public:
         template <class U>
         explicit constexpr Allocator(const Allocator<U>&) noexcept {}
 
+        T* address(T& __x) const noexcept {return std::addressof(__x);}
+
+        const T* address(const T& __x) const noexcept {return std::addressof(__x);}
+
         [[nodiscard]] T* allocate(const std::size_t n) {
             if constexpr (Alignment <= alignof(std::max_align_t)) {
                 const auto size = n > 1 ? AlignedSize * n : sizeof(T);
                 if (size <= AllocThreshold) { return reinterpret_cast<T*>(AllocateUnsafe(size)); }
             }
-            return std::allocator<T>::allocate(n);
+            return mInner.allocate(n);
         }
 
         void deallocate(T* p, const std::size_t n) noexcept {
@@ -81,7 +86,7 @@ public:
                     return;
                 }
             }
-            std::allocator<T>::deallocate(p, n);
+            mInner.deallocate(p, n);
         }
     };
 
