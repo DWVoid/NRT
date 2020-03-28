@@ -60,9 +60,19 @@ public:
         using size_type = std::size_t;
         using difference_type = std::ptrdiff_t;
         using is_always_equal = std::true_type;
-        using propagate_on_container_move_assignment = std::true_type;
+        using propagate_on_container_copy_assignment = std::false_type;
+        using propagate_on_container_move_assignment = std::false_type;
+        using propagate_on_container_swap = std::false_type;
 
         constexpr Allocator() noexcept = default;
+
+        Allocator(Allocator&&) noexcept = default;
+
+        Allocator& operator=(Allocator&&) noexcept = default;
+
+        Allocator(const Allocator&) noexcept = default;
+
+        Allocator& operator=(const Allocator&) noexcept = default;
 
         template <class U>
         explicit constexpr Allocator(const Allocator<U>&) noexcept {}
@@ -88,6 +98,10 @@ public:
             }
             mInner.deallocate(p, n);
         }
+
+        [[nodiscard]] bool operator == (const Allocator& r) const noexcept { return true; }
+
+        [[nodiscard]] bool operator != (const Allocator& r) const noexcept { return false; }
     };
 
 protected:
